@@ -5,7 +5,7 @@
 //   ③ app_settings.cache_version (SQL)
 // ============================================================
 export const SYS = {
-  version: '0.1.0',
+  version: '0.1.1',
   // 👉 Điền 2 giá trị từ Supabase Dashboard → Settings → API
   SUPA_URL: 'https://DIEN-PROJECT-REF.supabase.co',
   SUPA_ANON: 'DIEN-ANON-KEY',

@@ -341,3 +341,12 @@ textarea.input { min-height: 130px; resize: vertical; line-height: 1.55; }
 .row { display: flex; gap: 10px; align-items: center; }
 .row > .btn { width: auto; flex: 1; }
 .hidden { display: none !important; }
+
+/* ---------- Ô MẬT KHẨU + NÚT CON MẮT ---------- */
+.pw-wrap { position: relative; }
+.pw-wrap .input { padding-right: 52px; }
+.pw-eye { position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  width: 42px; height: 42px; border: none; background: none; cursor: pointer;
+  display: grid; place-items: center; color: var(--ink-2); border-radius: 12px; }
+.pw-eye:active { background: var(--surface-2); }
+.pw-eye.on { color: var(--gold-strong); }
