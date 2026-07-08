@@ -1,0 +1,16 @@
+{
+  "name": "Công việc",
+  "short_name": "Công việc",
+  "description": "Hệ thống báo cáo và quản trị công việc — Nón Sơn",
+  "lang": "vi",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F7F4EE",
+  "theme_color": "#F7F4EE",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
