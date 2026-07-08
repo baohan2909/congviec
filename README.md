@@ -1,4 +1,4 @@
-# CÔNG VIỆC — v0.1.5
+# CÔNG VIỆC — v0.1.6
 
 **Hệ thống báo cáo & quản trị công việc** cho Ban Quản trị Nón Sơn.
 PWA thuần (không cần build) · GitHub Pages · Supabase Pro region Sydney · Claude API.
@@ -105,6 +105,44 @@ supabase/  (KHÔNG nằm trong repo HTML, giữ trên máy anh làm tham chiếu
 ---
 
 ## NHẬT KÝ NỐI TIẾP
+
+### v0.1.6 — 08/07/2026 · Face mượt + Sửa/Xóa/Bổ sung toàn diện + Timeline giờ
+
+**① Đăng nhập khuôn mặt — mượt & 1x:**
+- **Camera cố định 1x**: getUserMedia với `aspectRatio: 1`, khung 640×640, thêm `applyConstraints({advanced:[{zoom: min}]})` để ép về 1x thật trên máy có zoom (một số iPhone/Android). Hết cảnh camera bị crop/zoom.
+- **Vòng ring loading SVG** 4 trạng thái rõ ràng: `dang-tai` (progress quay vòng vô định + ring xoay), `san-sang` (progress 75%), `dang-tim` (thở chậm), `thanh-cong` (progress đầy, hiện dấu check phóng vào), `that-bai` (đỏ + rung ngang). Không dùng vạch quét chạy dọc gây nhấp nháy.
+- **Mượt**: preload model song song ngay khi mở app (không đợi bấm nút), chu kỳ quét nới lên 260ms, chờ 2 khung ổn định mới nhận (bỏ khung đầu thường mờ), đóng overlay có transition `fadeOut` 220ms thay vì biến mất tức thì.
+- Hủy giữa chừng: tắt track camera sạch, không để camera "còn sáng đèn".
+
+**② Sửa / Xóa / Bổ sung toàn diện** — bằng tay và qua trợ lý:
+| Loại nội dung | Sửa | Xóa/Hủy | Bổ sung |
+|---|---|---|---|
+| Kế hoạch | Tiêu đề · giờ · địa điểm · nhắc trước | Hủy (DA_HUY, khôi phục được) | — |
+| Di chuyển | Giờ · nơi · lý do | Xóa hẳn | — |
+| Báo cáo (đã gửi) | ❌ (nội dung gốc bất khả sửa — audit) | ADMIN xóa mềm | ✅ Bổ sung nội tại, kèm dấu thời gian *"Bổ sung 15:30: ..."* |
+| Check-in | Chấm lại đè lên | — | — |
+| Công việc | Người tạo/ADMIN sửa tiêu đề · hạn · ưu tiên · người nhận | ADMIN xóa | Nhật ký cập nhật (đã có) |
+
+- Bấm chip kế hoạch (trong list hoặc timeline) → sheet chi tiết với các nút Sửa / Đã xong / Hủy / Khôi phục. Sửa giờ tự động reset cờ `da_sinh_nhac` để hệ thống nhắc lại đúng giờ mới.
+- Bổ sung báo cáo: card "Bổ sung báo cáo hôm nay" xuất hiện ngay khi báo cáo đã gửi trong tab Báo cáo.
+- **Trợ lý hiểu và tự làm**: prompt bổ sung nguyên tắc SỬA/XÓA/BỔ SUNG; ngữ cảnh giờ có thêm *Di chuyển hôm nay (id + giờ + nơi)* và *Báo cáo hôm nay (id + trích 200 ký tự đầu)*. AI khớp id qua giờ + từ khóa, không lấy được id chắc chắn thì hỏi lại 1 câu thay vì tạo trùng.
+- Ví dụ AI xử lý: *"dời họp NCC 3h sang mai 9h"* → `sua_ke_hoach(id, thoi_gian)`; *"bổ sung báo cáo sáng nay: đã ký hợp đồng với NCC vải kaki"* → `bo_sung_bao_cao(id, ...)`; *"đổi di chuyển 2h chiều thành 3h"* → `sua_di_chuyen(id, gio)`. Mọi thao tác đều có nút **Hoàn tác** trong thẻ "Em đã xử lý" — undo cho sửa là quay về giá trị cũ (RPC trả về cả `cu` và `moi`). Bổ sung báo cáo là **không undo** (nội dung đã được audit).
+
+**③ Timeline theo giờ trong ngày** (tab Kế hoạch):
+- Segment: Hôm nay · Ngày mai · Tuần này · 30 ngày. "Hôm nay" và "Ngày mai" hiện timeline; các segment khác giữ dạng list nhóm ngày.
+- Card "Lịch trong ngày" bên dưới danh sách: trục dọc từ giờ sớm nhất (min 6h) đến giờ muộn nhất (max 22h) → tự co giãn nếu có việc sớm hơn/muộn hơn. Mỗi slot cao 46px.
+- Chip trên timeline: **aurora** cho kế hoạch tương lai, **đỏ** cho quá giờ mà chưa xong, **xám gạch ngang** cho đã xong, **vàng** cho di chuyển.
+- Vạch "Bây giờ" glow aurora chạy ngang, có nhãn giờ HH:MM ở cạnh; tự cuộn vào view khi mở tab.
+- Bấm chip → mở sheet chi tiết như bấm list.
+
+**RPC mới:** `fn_sua_ke_hoach`, `fn_sua_di_chuyen`, `fn_bo_sung_bao_cao`, `fn_xoa_bao_cao` (ADMIN), `fn_sua_cong_viec`. Tất cả kiểm quyền chặt (chỉ chủ nội dung hoặc ADMIN), trả về `{cu, moi}` để client dựng Hoàn tác.
+
+**File thay đổi:** `js/07-face.js` (viết lại), `js/12-tab-kehoach.js` (viết lại), `js/05-troly.js`, `js/11-tab-baocao.js`, `js/02-auth.js`, `js/00-config.js`, `sw.js`, `css/app.css`, `README.md`.
+**SQL:** `UPDATE_v0.1.6.sql` (5 RPC + bump).
+**Edge Function:** dán lại `ai-gateway` (v4).
+**Kiểm chứng:** SQL 6/6 kịch bản pass (sửa kế hoạch reset nhắc, sửa di chuyển, bổ sung báo cáo, chặn bổ sung ngày khác, sửa công việc, chặn kế hoạch người khác). Toàn bộ JS pass syntax. Face & timeline cần Aroma test trên iPhone thật để xác nhận cảm giác "mượt".
+
+---
 
 ### v0.1.5 — 08/07/2026 · Phát triển toàn bộ các nhánh còn lại
 
@@ -272,4 +310,4 @@ supabase/  (KHÔNG nằm trong repo HTML, giữ trên máy anh làm tham chiếu
 
 ## LỘ TRÌNH PATCH KẾ TIẾP
 
-**v0.1.6 (dự kiến):** Trợ lý hỏi đáp sâu ("tuần này phòng kho có vấn đề gì", "việc X tới đâu rồi" trả lời bằng dữ liệu thật) · tổng hợp tuần/tháng · biểu đồ hiệu suất người/phòng · xuất báo cáo Word trình TGĐ.
+**v0.1.7 (dự kiến):** Trợ lý hỏi đáp sâu (*"tuần này phòng kho có vấn đề gì"*, *"việc X tới đâu rồi"* trả lời bằng dữ liệu thật, có RPC truy vấn tổng hợp) · tổng hợp tuần/tháng · biểu đồ hiệu suất người/phòng · xuất báo cáo Word trình TGĐ.

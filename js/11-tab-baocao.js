@@ -16,6 +16,15 @@ export async function renderBaoCao(root) {
         <p class="page-sub">Nói vài câu, em soạn báo cáo chỉn chu giúp mình ạ.</p></div>
     </div>
 
+    <div class="card" id="bcBoSung" style="display:none">
+      <h2 class="card-title">${ic('edit')} Bổ sung báo cáo hôm nay</h2>
+      <p class="muted" style="font-size:14px;margin:0 0 10px">Báo cáo đã gửi không sửa nội dung gốc — bổ sung sẽ được ghi kèm dấu thời gian, minh bạch cho Ban Quản trị ạ.</p>
+      <textarea class="input" id="bcBSText" placeholder="Ý bổ sung… (cũng có thể nhờ trợ lý bằng mic)" style="min-height:100px"></textarea>
+      <div class="row mt">
+        <button class="btn btn-quiet" id="bcBSMic">${ic('mic')} Nhờ trợ lý</button>
+        <button class="btn btn-primary" id="bcBSGui">${ic('check')} Gửi bổ sung</button>
+      </div>
+    </div>
     <div class="card" id="bcKeHoach" style="display:none">
       <h2 class="card-title">${ic('calendar')} Kế hoạch chờ phản hồi hôm nay</h2>
       <p class="muted" style="font-size:14px;margin:0 0 6px">Báo cáo cuối ngày cần phản hồi từng mục dưới đây — anh/chị cứ nói tự nhiên, em sẽ tự đối chiếu ạ.</p>
@@ -43,6 +52,7 @@ export async function renderBaoCao(root) {
 
   vePhotos(root);
   veKeHoachCho(root);
+  veBoSung(root, D);
 
   const reload = () => { photos = []; renderBaoCao(root); };
   const getAnh = async () => {
@@ -159,5 +169,23 @@ async function veLichSu(root) {
       ${b.audio_path ? `<audio class="mt" controls style="width:100%" src="${anhURL(b.audio_path)}"></audio>` : ''}
       ${b.noi_dung_goc ? `<details class="mt"><summary class="muted">Bản nói gốc</summary>
         <p class="muted" style="font-size:14px">${esc(b.noi_dung_goc)}</p></details>` : ''}`);
+  });
+}
+
+function veBoSung(root, D) {
+  const bc = D?.bao_cao;
+  if (!bc?.id) return;
+  const card = $('#bcBoSung', root);
+  card.style.display = '';
+  $('#bcBSMic', root).onclick = () =>
+    import('./05-troly.js').then(({ moGhiAm }) =>
+      moGhiAm('troly', { onSaved: () => renderBaoCao(root) }));
+  $('#bcBSGui', root).onclick = () => busy($('#bcBSGui', root), async () => {
+    const t = $('#bcBSText', root).value.trim();
+    if (!t) { toast('Anh/chị cho em xin nội dung bổ sung ạ.', 'err'); return; }
+    try {
+      await rpc('fn_bo_sung_bao_cao', { p_id: bc.id, p_noi_dung_them: t });
+      toast('Em đã bổ sung vào báo cáo hôm nay ạ.'); renderBaoCao(root);
+    } catch (e) { toast(loiNguoi(e), 'err'); }
   });
 }

@@ -5,7 +5,7 @@
 import { rpc, phien, loiNguoi } from './01-supabase.js';
 import { $, ic, toast, busy, openSheet, closeSheet } from './03-ui.js';
 import { MC, SYS } from './00-config.js';
-import { faceLocal, dangNhapKhuonMat, dangKyKhuonMat } from './07-face.js';
+import { faceLocal, dangNhapKhuonMat, dangKyKhuonMat, preloadFaceModel } from './07-face.js';
 
 export function renderLogin(onOK) {
   const el = $('#screen-login');
@@ -48,6 +48,8 @@ export function renderLogin(onOK) {
   // Đăng nhập khuôn mặt (nếu máy này đã đăng ký)
   const fl = faceLocal();
   if (fl) {
+    preloadFaceModel(); // tải model song song để bấm nút là camera bật ngay
+
     $('#lgFaceBox').classList.remove('hidden');
     $('#lgMa').value = fl.ma_nv;
     $('#lgFace').onclick = async () => {

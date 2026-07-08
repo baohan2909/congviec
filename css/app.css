@@ -467,12 +467,143 @@ html[data-theme="dark"] .login-title {
 .row > .btn { width: auto; flex: 1; }
 .hidden { display: none !important; }
 
-/* ---------- CAMERA KHUÔN MẶT ---------- */
-.face-ring { width: 240px; height: 240px; border-radius: 50%; overflow: hidden;
-  border: 3px solid var(--acc); box-shadow: 0 0 40px var(--acc-glow), 0 0 0 10px var(--acc-soft);
-  position: relative; }
-.face-ring video { width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
-.face-ring::after { content: ""; position: absolute; left: 8%; right: 8%; height: 2.5px;
-  background: linear-gradient(90deg, transparent, var(--acc), transparent);
-  animation: faceScan 2.2s ease-in-out infinite; border-radius: 99px; }
-@keyframes faceScan { 0%,100% { top: 12%; } 50% { top: 86%; } }
+/* ---------- CAMERA KHUÔN MẶT (v2) ---------- */
+.face-cage {
+  position: relative;
+  width: min(300px, 80vw); aspect-ratio: 1; margin: 0 auto;
+}
+.face-ring-svg {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  transform: rotate(-90deg);
+}
+.face-ring-svg .fr-track {
+  fill: none; stroke: var(--line-2); stroke-width: 3;
+}
+.face-ring-svg .fr-progress {
+  fill: none; stroke: var(--acc); stroke-width: 5;
+  stroke-linecap: round;
+  stroke-dasharray: 767; stroke-dashoffset: 767;
+  filter: drop-shadow(0 0 6px var(--acc-glow));
+  transition: stroke-dashoffset .4s ease;
+}
+.face-video-wrap {
+  position: absolute; inset: 18px;
+  border-radius: 50%; overflow: hidden;
+  background: #050B1F;
+  box-shadow: 0 8px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.08);
+}
+.face-video-wrap video {
+  width: 100%; height: 100%; object-fit: cover;
+  transform: scaleX(-1); /* hiệu ứng gương, giữ 1x */
+  transition: opacity .3s ease;
+}
+.face-check {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  color: #FFFFFF; opacity: 0; transform: scale(.6);
+  transition: opacity .3s ease, transform .3s cubic-bezier(.28,1.4,.62,1.1);
+}
+.face-check .ic { width: 72px; height: 72px; stroke-width: 3;
+  filter: drop-shadow(0 0 20px var(--acc)); }
+
+/* ---- STATE MACHINE ---- */
+/* dang-tai: progress quay vòng vô định */
+.rec-overlay[data-state="dang-tai"] .fr-progress {
+  animation: frSpin 1.4s ease-in-out infinite;
+}
+@keyframes frSpin {
+  0%   { stroke-dashoffset: 690; transform: rotate(0deg); }
+  50%  { stroke-dashoffset: 380; }
+  100% { stroke-dashoffset: 690; transform: rotate(360deg); }
+}
+.rec-overlay[data-state="dang-tai"] .face-ring-svg { transform: rotate(-90deg); animation: frRotate 2s linear infinite; }
+@keyframes frRotate { to { transform: rotate(270deg); } }
+
+/* san-sang: ring hoàn thành nhẹ, sáng aurora */
+.rec-overlay[data-state="san-sang"] .fr-progress {
+  stroke-dashoffset: 190; /* ~ 75% */
+}
+
+/* dang-tim: ring nhấp nháy chậm */
+.rec-overlay[data-state="dang-tim"] .fr-progress {
+  stroke-dashoffset: 100;
+  animation: frBreathe 2.2s ease-in-out infinite;
+}
+@keyframes frBreathe { 50% { opacity: .55; } }
+
+/* thanh-cong: ring đầy + check hiện */
+.rec-overlay[data-state="thanh-cong"] .fr-progress {
+  stroke-dashoffset: 0;
+  stroke: var(--acc-2);
+  animation: none;
+}
+.rec-overlay[data-state="thanh-cong"] .face-video-wrap video { opacity: .35; }
+.rec-overlay[data-state="thanh-cong"] .face-check { opacity: 1; transform: scale(1); }
+
+/* that-bai: ring đỏ */
+.rec-overlay[data-state="that-bai"] .fr-progress {
+  stroke: var(--danger);
+  stroke-dashoffset: 0;
+  animation: frShake .5s ease;
+}
+@keyframes frShake {
+  0%,100% { transform: translate(0,0); }
+  25% { transform: translate(-4px,0); } 75% { transform: translate(4px,0); }
+}
+
+/* Đóng mượt */
+.rec-overlay.closing { animation: fadeOut .22s ease forwards; }
+@keyframes fadeOut { to { opacity: 0; transform: scale(.98); } }
+.rec-overlay { transition: opacity .22s ease, transform .22s ease; }
+
+/* ---------- TIMELINE THEO GIỜ ---------- */
+.hourline {
+  display: grid; grid-template-columns: 56px 1fr;
+  margin-top: 8px; position: relative;
+}
+.hourline .h-lbl {
+  padding: 4px 8px 0 0;
+  font-family: var(--font-mono); font-size: 11px; color: var(--ink-3);
+  text-align: right; border-top: 1px dashed var(--line);
+  line-height: 1; min-height: 46px;
+}
+.hourline .h-body {
+  border-top: 1px dashed var(--line);
+  min-height: 46px; padding: 4px 4px 4px 12px;
+  position: relative;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.hourline .h-body::before {
+  content: ""; position: absolute; left: 0; top: -3px;
+  width: 5px; height: 5px; border-radius: 50%; background: var(--line-2);
+}
+.hourline .now {
+  position: absolute; left: 56px; right: 4px;
+  height: 2px; background: var(--acc);
+  box-shadow: 0 0 10px var(--acc-glow);
+  z-index: 3; pointer-events: none;
+}
+.hourline .now::before {
+  content: ""; position: absolute; left: -6px; top: -4px;
+  width: 10px; height: 10px; border-radius: 50%; background: var(--acc);
+  box-shadow: 0 0 12px var(--acc);
+}
+.hourline .now-lbl {
+  position: absolute; right: 4px; top: -18px;
+  font-family: var(--font-mono); font-size: 11px; color: var(--acc-ink);
+  background: var(--acc-soft); border: 1px solid var(--acc-line);
+  padding: 2px 6px; border-radius: 999px;
+}
+.plan-chip {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--acc-soft); border: 1px solid var(--acc-line);
+  border-radius: 10px; padding: 6px 10px; font-size: 13px;
+  cursor: pointer; transition: transform .1s ease;
+}
+.plan-chip:active { transform: scale(.98); }
+.plan-chip.done { opacity: .5; text-decoration: line-through; background: var(--surface-2); border-color: var(--line); }
+.plan-chip.late { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 40%, var(--line)); color: var(--danger); }
+.plan-chip.move { background: var(--gold-soft); border-color: var(--gold-line); color: var(--gold); }
+.plan-chip .p-time { font-family: var(--font-mono); font-weight: 700; font-size: 12px; flex: none; }
+.plan-chip .p-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--ink); font-weight: 600; }
+.plan-chip.done .p-name, .plan-chip.late .p-name { color: inherit; }

@@ -66,6 +66,47 @@ async function thucThiAuto(tc) {
     return { icon: 'briefcase',
       mota: `Đã cập nhật công việc${Number.isFinite(Number(i.tien_do)) ? ` — tiến độ ${i.tien_do}%` : ''}: ${i.ghi_chu || ''}` };
   }
+  if (tc.name === 'sua_ke_hoach') {
+    const kq = await rpc('fn_sua_ke_hoach', { p_id: Number(i.id), p_thay_doi: {
+      ...(i.tieu_de ? { tieu_de: i.tieu_de } : {}),
+      ...(i.thoi_gian ? { thoi_gian: i.thoi_gian } : {}),
+      ...(i.dia_diem !== undefined ? { dia_diem: i.dia_diem } : {}),
+      ...(Number.isFinite(Number(i.nhac_truoc_phut)) ? { nhac_truoc_phut: Number(i.nhac_truoc_phut) } : {}),
+      ...(i.trang_thai ? { trang_thai: i.trang_thai } : {}),
+    }});
+    // dựng mô tả cụ thể "cái gì → cái gì"
+    const cu = kq.cu, moi = kq.moi;
+    const bo = [];
+    if (cu.tieu_de !== moi.tieu_de) bo.push(`đổi tên "${cu.tieu_de}" → "${moi.tieu_de}"`);
+    if (cu.thoi_gian !== moi.thoi_gian) bo.push(`dời giờ ${fmtNgayGio(cu.thoi_gian)} → ${fmtNgayGio(moi.thoi_gian)}`);
+    if ((cu.dia_diem || '') !== (moi.dia_diem || '')) bo.push(`địa điểm → "${moi.dia_diem || 'không có'}"`);
+    if (cu.trang_thai !== moi.trang_thai) bo.push(moi.trang_thai === 'DA_HUY' ? 'đã hủy' : moi.trang_thai === 'DA_THUC_HIEN' ? 'đánh dấu hoàn thành' : 'khôi phục');
+    return { icon: 'edit',
+      mota: `Kế hoạch "${moi.tieu_de}": ${bo.join(', ') || 'đã cập nhật'}`,
+      undo: () => rpc('fn_sua_ke_hoach', { p_id: cu.id, p_thay_doi: {
+        tieu_de: cu.tieu_de, thoi_gian: cu.thoi_gian, dia_diem: cu.dia_diem,
+        nhac_truoc_phut: cu.nhac_truoc_phut, trang_thai: cu.trang_thai,
+      }}) };
+  }
+  if (tc.name === 'sua_di_chuyen') {
+    const kq = await rpc('fn_sua_di_chuyen', { p_id: Number(i.id), p_thay_doi: {
+      ...(i.gio ? { gio: i.gio } : {}),
+      ...(i.dia_diem ? { dia_diem: i.dia_diem } : {}),
+      ...(i.ly_do !== undefined ? { ly_do: i.ly_do } : {}),
+    }});
+    const cu = kq.cu, moi = kq.moi;
+    return { icon: 'car',
+      mota: `Di chuyển ${cu.gio} ${cu.dia_diem} → ${moi.gio} ${moi.dia_diem}`,
+      undo: () => rpc('fn_sua_di_chuyen', { p_id: cu.id, p_thay_doi: {
+        gio: cu.gio, dia_diem: cu.dia_diem, ly_do: cu.ly_do,
+      }}) };
+  }
+  if (tc.name === 'bo_sung_bao_cao') {
+    await rpc('fn_bo_sung_bao_cao', { p_id: Number(i.id), p_noi_dung_them: i.noi_dung_them });
+    // undo: không hoàn tác được text đã append (audit)
+    return { icon: 'file',
+      mota: `Đã bổ sung báo cáo hôm nay: "${(i.noi_dung_them || '').slice(0, 80)}"` };
+  }
   if (tc.name === 'tao_nhac_viec') {
     const r = await rpc('fn_tao_ke_hoach', {
       p_tieu_de: i.noi_dung, p_thoi_gian: i.lich_gui,
