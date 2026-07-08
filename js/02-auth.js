@@ -4,7 +4,7 @@
 // ============================================================
 import { rpc, phien, loiNguoi } from './01-supabase.js';
 import { $, ic, toast, busy, openSheet, closeSheet } from './03-ui.js';
-import { MC } from './00-config.js';
+import { MC, SYS } from './00-config.js';
 
 export function renderLogin(onOK) {
   const el = $('#screen-login');
@@ -33,6 +33,8 @@ export function renderLogin(onOK) {
           <p class="muted mt" style="font-size:14px;text-align:center">
             Đăng nhập bằng khuôn mặt sẽ sẵn sàng ở bản cập nhật kế tiếp ạ.</p>
         </div>
+        <p class="mono muted" style="text-align:center;font-size:12px;margin-top:14px;letter-spacing:.04em">
+          Công việc · v${SYS.version}</p>
       </div>
     </div>`;
 
