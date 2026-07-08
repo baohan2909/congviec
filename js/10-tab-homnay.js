@@ -87,7 +87,7 @@ function veCheckin(root) {
     <h2 class="card-title">${ic('pin')} Nơi làm việc hôm nay</h2>
     <div class="row" style="justify-content:space-between">
       <div>
-        <span class="badge badge-teal">${ic('check')} ${esc(ten)}</span>
+        <span class="badge badge-acc">${ic('check')} ${esc(ten)}</span>
         ${c.dia_diem ? `<div class="mt" style="font-weight:600">${ic('pin')} ${esc(c.dia_diem)}</div>` : ''}
         ${c.ghi_chu ? `<div class="muted" style="font-size:14px">${esc(c.ghi_chu)}</div>` : ''}
       </div>
@@ -114,7 +114,7 @@ function hoiDiaDiem(loai, root) {
       <input class="input" id="ctNoi" placeholder="Vd: Kho Bình Tân, chi nhánh Cần Thơ…"></div>
     <div class="field"><label>Nội dung / ghi chú</label>
       <input class="input" id="ctGc"></div>
-    <button class="btn btn-gold" id="ctOK">${ic('check')} Ghi nhận</button>`);
+    <button class="btn btn-primary" id="ctOK">${ic('check')} Ghi nhận</button>`);
   $('#ctOK', sh).onclick = () => busy($('#ctOK', sh), async () => {
     const noi = $('#ctNoi', sh).value.trim();
     if (!noi) { toast(MC.thieuDiaDiem, 'err'); return; }
@@ -142,7 +142,7 @@ function formDiChuyen(root) {
         <input class="input" id="dcNoi" placeholder="Vd: CH Quận 7"></div>
     </div>
     <div class="field"><label>Lý do</label><input class="input" id="dcLd"></div>
-    <button class="btn btn-gold" id="dcOK">${ic('check')} Ghi nhận</button>`);
+    <button class="btn btn-primary" id="dcOK">${ic('check')} Ghi nhận</button>`);
   $('#dcOK', sh).onclick = () => busy($('#dcOK', sh), async () => {
     try {
       await rpc('fn_them_di_chuyen', {
@@ -160,14 +160,14 @@ function veBaoCao(root) {
   if (D.bao_cao) {
     box.innerHTML = `
       <h2 class="card-title">${ic('file')} Báo cáo hôm nay</h2>
-      <span class="badge badge-teal">${ic('check')} Đã gửi lúc ${fmtGio(D.bao_cao.gui_luc)}</span>
+      <span class="badge badge-acc">${ic('check')} Đã gửi lúc ${fmtGio(D.bao_cao.gui_luc)}</span>
       ${D.bao_cao.co_van_de ? `<span class="badge badge-danger" style="margin-left:8px">${ic('alert')} Có vấn đề</span>` : ''}
       <div class="mt muted" style="font-size:15px;max-height:110px;overflow:hidden">${nl2html(D.bao_cao.noi_dung)}</div>`;
   } else {
     box.innerHTML = `
       <h2 class="card-title">${ic('file')} Báo cáo hôm nay</h2>
       <p class="muted mb0">${MC.chuaCoBaoCao}</p>
-      <button class="btn btn-gold mt" id="hnBcBtn">${ic('mic')} Báo cáo ngay</button>`;
+      <button class="btn btn-primary mt" id="hnBcBtn">${ic('mic')} Báo cáo ngay</button>`;
     $('#hnBcBtn', box).onclick = () => window.cvGoTab?.('baocao');
   }
 }

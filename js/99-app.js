@@ -15,7 +15,7 @@ const theme = localStorage.getItem('cv_theme')
   || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 document.documentElement.dataset.theme = theme;
 document.querySelector('meta[name=theme-color]')
-  ?.setAttribute('content', theme === 'dark' ? '#0D1220' : '#F7F4EE');
+  ?.setAttribute('content', theme === 'dark' ? '#050B1F' : '#EEF3FA');
 
 // ---------- Service worker ----------
 if ('serviceWorker' in navigator) {

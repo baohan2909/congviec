@@ -26,7 +26,7 @@ export function openRecorder({ startText = '', onDone }) {
     <div class="rec-live" id="recLive"></div>
     <div class="rec-actions">
       <button class="btn btn-quiet" id="recPause">${ic('pause')} Tạm dừng</button>
-      <button class="btn btn-gold" id="recSend">${ic('send')} Gửi ngay</button>
+      <button class="btn btn-primary" id="recSend">${ic('send')} Gửi ngay</button>
     </div>
     <button class="btn btn-sm" id="recCancel" style="width:auto">${ic('x')} Hủy</button>`;
   document.body.appendChild(ov);

@@ -28,7 +28,7 @@ export function renderLogin(onOK) {
                 <button type="button" class="pw-eye" id="lgEye" aria-label="Hiện mật khẩu">${ic('eye')}</button>
               </div>
             </div>
-            <button class="btn btn-gold" id="lgBtn" type="submit">${ic('key')} Đăng nhập</button>
+            <button class="btn btn-primary" id="lgBtn" type="submit">${ic('key')} Đăng nhập</button>
           </form>
           <p class="muted mt" style="font-size:14px;text-align:center">
             Đăng nhập bằng khuôn mặt sẽ sẵn sàng ở bản cập nhật kế tiếp ạ.</p>
@@ -81,7 +81,7 @@ function doiMatKhauLanDau(onOK) {
           <input class="input" id="dmMoi" type="password" autocomplete="new-password" autocapitalize="none">
           <button type="button" class="pw-eye" data-for="dmMoi" aria-label="Hiện mật khẩu">${ic('eye')}</button>
         </div></div>
-      <button class="btn btn-gold" id="dmBtn" type="submit">${ic('check')} Lưu mật khẩu mới</button>
+      <button class="btn btn-primary" id="dmBtn" type="submit">${ic('check')} Lưu mật khẩu mới</button>
     </form>`);
 
   sh.querySelectorAll('.pw-eye[data-for]').forEach((b) => b.onclick = () => {

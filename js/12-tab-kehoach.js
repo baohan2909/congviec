@@ -13,7 +13,7 @@ export async function renderKeHoach(root) {
         <p class="page-sub">Em sẽ nhắc đúng giờ, không để sót việc nào ạ.</p></div>
     </div>
     <div class="row" style="margin-bottom:14px">
-      <button class="btn btn-gold" id="khMic">${ic('mic')} Nói kế hoạch</button>
+      <button class="btn btn-primary" id="khMic">${ic('mic')} Nói kế hoạch</button>
       <button class="btn btn-quiet" id="khAdd">${ic('plus')} Tự nhập</button>
     </div>
     <div id="khList"><div class="skeleton" style="height:120px"></div></div>`;
@@ -53,7 +53,7 @@ export async function renderKeHoach(root) {
 
 function veItem(k) {
   const badge = {
-    CHO: '', DA_THUC_HIEN: `<span class="badge badge-teal">${ic('check')} Đã thực hiện</span>`,
+    CHO: '', DA_THUC_HIEN: `<span class="badge badge-acc">${ic('check')} Đã thực hiện</span>`,
     DA_HUY: `<span class="badge badge-warn">Đã hủy</span>`,
   }[k.trang_thai] || '';
   const qua = k.trang_thai === 'CHO' && new Date(k.thoi_gian) < new Date();
@@ -113,7 +113,7 @@ function formThem(reload) {
         </select></div>
     </div>
     <div class="field"><label>Địa điểm</label><input class="input" id="fkDd"></div>
-    <button class="btn btn-gold" id="fkOK">${ic('check')} Lưu kế hoạch</button>`);
+    <button class="btn btn-primary" id="fkOK">${ic('check')} Lưu kế hoạch</button>`);
   $('#fkOK', sh).onclick = () => busy($('#fkOK', sh), async () => {
     const td = $('#fkTd', sh).value.trim(), tg = $('#fkTg', sh).value;
     if (!td || !tg) { toast('Anh/chị cho em xin tên việc và thời gian ạ.', 'err'); return; }

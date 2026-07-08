@@ -2,17 +2,24 @@
 // CÔNG VIỆC — 11-tab-baocao.js
 // ============================================================
 import { rpc, phien, nenAnh, uploadAnh, anhURL, loiNguoi } from './01-supabase.js';
-import { $, $$, ic, esc, nl2html, toast, openSheet, busy, fmtNgay, fmtGio, homNayVN } from './03-ui.js';
+import { $, $$, ic, esc, nl2html, toast, openSheet, busy, fmtNgay, fmtGio, fmtNgayGio, homNayVN } from './03-ui.js';
 import { MC } from './00-config.js';
 import { moGhiAm, xuLyVoiTroLy } from './05-troly.js';
 
 let photos = []; // { blob, url }
+let khChoCount = 0;
 
 export async function renderBaoCao(root) {
   root.innerHTML = `
     <div class="page-head">
       <div><h1 class="page-title">Báo cáo</h1>
         <p class="page-sub">Nói vài câu, em soạn báo cáo chỉn chu giúp mình ạ.</p></div>
+    </div>
+
+    <div class="card" id="bcKeHoach" style="display:none">
+      <h2 class="card-title">${ic('calendar')} Kế hoạch chờ phản hồi hôm nay</h2>
+      <p class="muted" style="font-size:14px;margin:0 0 6px">Báo cáo cuối ngày cần phản hồi từng mục dưới đây — anh/chị cứ nói tự nhiên, em sẽ tự đối chiếu ạ.</p>
+      <div id="bcKhList"></div>
     </div>
 
     <div class="card">
@@ -24,7 +31,7 @@ export async function renderBaoCao(root) {
         <button class="btn btn-quiet" id="bcMic">${ic('mic')} Nói</button>
         <button class="btn btn-quiet" id="bcCam">${ic('camera')} Ảnh</button>
       </div>
-      <button class="btn btn-gold mt" id="bcAI">${ic('sparkle')} Nhờ trợ lý chuẩn hóa &amp; gửi</button>
+      <button class="btn btn-primary mt" id="bcAI">${ic('sparkle')} Nhờ trợ lý chuẩn hóa &amp; gửi</button>
       <button class="btn btn-quiet mt" id="bcRaw">${ic('send')} Gửi nguyên văn</button>
       <input type="file" id="bcFile" accept="image/*" multiple hidden>
     </div>
@@ -35,6 +42,7 @@ export async function renderBaoCao(root) {
     </div>`;
 
   vePhotos(root);
+  veKeHoachCho(root);
 
   const reload = () => { photos = []; renderBaoCao(root); };
   const getAnh = async () => {
@@ -69,6 +77,10 @@ export async function renderBaoCao(root) {
   $('#bcRaw', root).onclick = () => busy($('#bcRaw', root), async () => {
     const t = $('#bcText', root).value.trim();
     if (!t) { toast('Nội dung báo cáo đang trống ạ.', 'err'); return; }
+    if (khChoCount > 0) {
+      toast(`Còn ${khChoCount} kế hoạch chờ phản hồi ạ. Anh/chị dùng nút "Nhờ trợ lý" để em đối chiếu từng mục nhé.`, 'err', 5200);
+      return;
+    }
     try {
       const anh = await getAnh();
       await rpc('fn_gui_bao_cao', {
@@ -80,6 +92,25 @@ export async function renderBaoCao(root) {
   });
 
   veLichSu(root);
+}
+
+async function veKeHoachCho(root) {
+  khChoCount = 0;
+  try {
+    const ds = await rpc('fn_ke_hoach_cho_phan_hoi');
+    if (!ds?.length) return;
+    khChoCount = ds.length;
+    const card = $('#bcKeHoach', root);
+    card.style.display = '';
+    $('#bcKhList', root).innerHTML = ds.map((k) => `
+      <div class="list-item">
+        <span class="badge badge-gold mono">${fmtNgayGio(k.thoi_gian)}</span>
+        <div class="list-main">
+          <div class="list-title">${esc(k.tieu_de)}</div>
+          ${k.dia_diem ? `<div class="list-sub">${esc(k.dia_diem)}</div>` : ''}
+        </div>
+      </div>`).join('');
+  } catch {}
 }
 
 function vePhotos(root) {

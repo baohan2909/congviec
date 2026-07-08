@@ -2,7 +2,7 @@
 // CÔNG VIỆC — 14-tab-quantri.js  (chỉ ADMIN)
 // ============================================================
 import { rpc, anhURL, loiNguoi } from './01-supabase.js';
-import { $, $$, ic, esc, nl2html, toast, openSheet, closeSheet, busy, fmtGio, fmtNgay, homNayVN } from './03-ui.js';
+import { $, $$, ic, esc, nl2html, toast, openSheet, closeSheet, busy, fmtGio, fmtNgay, fmtNgayGio, homNayVN } from './03-ui.js';
 import { MC } from './00-config.js';
 
 let seg = 'tongquan';
@@ -31,38 +31,58 @@ async function veTongQuan(box) {
   catch (e) { box.innerHTML = `<div class="card">${esc(loiNguoi(e))}</div>`; return; }
 
   const ns = d.nhan_su || [];
-  const dem = (f) => ns.filter(f).length;
-  const chua = ns.filter((n) => !n.loai);
   const vanDe = (d.bao_cao_moi || []).filter((b) => b.co_van_de);
+  const daBC = ns.filter((n) => n.da_bao_cao).length;
+
+  // Nhóm theo địa điểm thực tế Nón Sơn
+  const nhom = [
+    { key: 'VAN_PHONG', ten: 'Văn phòng · Xưởng nón vải', icon: 'building' },
+    { key: 'XUONG_BH',  ten: 'Xưởng bảo hiểm',            icon: 'factory' },
+    { key: 'CONG_TAC',  ten: 'Công tác',                   icon: 'car' },
+    { key: 'LAM_O_NHA', ten: 'Làm việc tại nhà',           icon: 'home' },
+    { key: 'NGHI_PHEP', ten: 'Nghỉ phép',                  icon: 'leaf' },
+  ].map((g) => ({ ...g, ds: ns.filter((n) => n.loai === g.key) }));
+  const chua = ns.filter((n) => !n.loai);
+
+  const veNguoi = (n, congTac = false) => `
+    <div class="list-item" ${n.di_chuyen?.length ? `data-nv="${n.ma_nv}" style="cursor:pointer"` : ''}>
+      <div class="avatar">${esc(n.ho_ten.trim().split(/\s+/).map((w) => w[0]).slice(-2).join('').toUpperCase())}</div>
+      <div class="list-main">
+        <div class="list-title">${esc(n.ho_ten)}</div>
+        <div class="list-sub">
+          ${congTac && n.dia_diem
+            ? `${ic('pin')} <b style="color:var(--acc-ink)">${esc(n.dia_diem)}</b>`
+            : esc(n.ten_pb || '—')}
+          ${n.di_chuyen?.length ? ` · ${n.di_chuyen.length} di chuyển` : ''}
+        </div>
+      </div>
+      ${n.da_bao_cao ? `<span class="badge badge-acc">${ic('file')} Đã BC</span>`
+                     : `<span class="badge badge-warn">Chưa BC</span>`}
+    </div>`;
 
   box.innerHTML = `
     <div class="stat-row">
       <div class="stat"><b>${ns.length}</b><span>Thành viên</span></div>
-      <div class="stat"><b style="color:var(--teal-ink)">${dem((n) => n.loai)}</b><span>Đã cập nhật vị trí</span></div>
-      <div class="stat"><b style="color:var(--gold-strong)">${dem((n) => n.da_bao_cao)}</b><span>Đã gửi báo cáo</span></div>
+      <div class="stat"><b style="color:${chua.length ? 'var(--danger)' : 'var(--acc-ink)'}">${chua.length}</b><span>Chưa cập nhật vị trí</span></div>
+      <div class="stat"><b style="color:var(--acc-ink)">${daBC}</b><span>Đã gửi báo cáo</span></div>
       <div class="stat"><b style="color:${vanDe.length ? 'var(--danger)' : 'var(--ink)'}">${vanDe.length}</b><span>Vấn đề phát sinh</span></div>
     </div>
 
-    ${chua.length ? `<div class="remind">${ic('alert')}
-      <p><b>${chua.length} người chưa cập nhật vị trí:</b> ${esc(chua.map((n) => n.ho_ten).join(', '))}</p></div>` : ''}
-
     <div class="card">
-      <h2 class="card-title">${ic('users')} Nhân sự hôm nay</h2>
-      ${ns.map((n) => `
-        <div class="list-item" ${n.di_chuyen?.length ? `data-nv="${n.ma_nv}" style="cursor:pointer"` : ''}>
-          <div class="avatar">${esc(n.ho_ten.trim().split(/\s+/).map((w) => w[0]).slice(-2).join('').toUpperCase())}</div>
-          <div class="list-main">
-            <div class="list-title">${esc(n.ho_ten)}</div>
-            <div class="list-sub">${esc(n.ten_pb || '—')}${n.dia_diem ? ' · ' + esc(n.dia_diem) : ''}</div>
-          </div>
-          ${n.loai
-            ? `<span class="badge ${n.loai === 'NGHI_PHEP' ? 'badge-warn' : 'badge-teal'}">${esc(n.ten_loai)}</span>`
-            : `<span class="badge badge-danger">Chưa cập nhật</span>`}
-          ${n.da_bao_cao ? `<span class="badge badge-gold">${ic('file')}</span>` : ''}
+      <h2 class="card-title">${ic('users')} Hôm nay ai ở đâu</h2>
+      ${chua.length ? `
+        <div class="loc-group">
+          <div class="loc-head miss">${ic('alert')} Chưa cập nhật vị trí <span class="cnt">${chua.length}</span></div>
+          ${chua.map((n) => veNguoi(n)).join('')}
+        </div>` : ''}
+      ${nhom.filter((g) => g.ds.length).map((g) => `
+        <div class="loc-group">
+          <div class="loc-head">${ic(g.icon)} ${g.ten} <span class="cnt">${g.ds.length}</span></div>
+          ${g.ds.map((n) => veNguoi(n, g.key === 'CONG_TAC')).join('')}
         </div>`).join('')}
     </div>
 
-    <div class="card mb0">
+    <div class="card">
       <h2 class="card-title">${ic('file')} Báo cáo hôm nay (${(d.bao_cao_moi || []).length})</h2>
       ${(d.bao_cao_moi || []).length
         ? d.bao_cao_moi.map((b) => `
@@ -75,9 +95,23 @@ async function veTongQuan(box) {
             ${b.so_anh > 0 ? `<span class="badge badge-gold">${ic('camera')} ${b.so_anh}</span>` : ''}
           </div>`).join('')
         : '<p class="muted mb0">Chưa có báo cáo nào hôm nay ạ.</p>'}
+    </div>
+
+    <div class="card mb0">
+      <h2 class="card-title">${ic('calendar')} Kế hoạch toàn công ty — 7 ngày tới (${(d.ke_hoach_toi || []).length})</h2>
+      ${(d.ke_hoach_toi || []).length
+        ? d.ke_hoach_toi.map((k) => `
+          <div class="list-item">
+            <span class="badge badge-gold mono">${fmtNgayGio(k.thoi_gian)}</span>
+            <div class="list-main">
+              <div class="list-title">${esc(k.tieu_de)}</div>
+              <div class="list-sub">${esc(k.ho_ten)}${k.dia_diem ? ' · ' + esc(k.dia_diem) : ''}</div>
+            </div>
+          </div>`).join('')
+        : '<p class="muted mb0">Chưa có kế hoạch nào được đăng ký ạ.</p>'}
     </div>`;
 
-  // Timeline di chuyển của một người
+  // Timeline di chuyển
   $$('.list-item[data-nv]', box).forEach((el) => el.onclick = () => {
     const n = ns.find((x) => x.ma_nv === el.dataset.nv);
     openSheet(`
@@ -88,8 +122,6 @@ async function veTongQuan(box) {
         ${dc.ly_do ? `<div class="tl-note">${esc(dc.ly_do)}</div>` : ''}</li>`).join('')}
       </ul>`);
   });
-
-  // Mở nhanh báo cáo
   $$('.list-item[data-bc]', box).forEach((el) => el.onclick = () => moBaoCao(Number(el.dataset.bc)));
 }
 
@@ -118,7 +150,7 @@ async function veNhanSu(box) {
   } catch (e) { box.innerHTML = `<div class="card">${esc(loiNguoi(e))}</div>`; return; }
 
   box.innerHTML = `
-    <button class="btn btn-gold" id="nsThem" style="margin-bottom:14px">${ic('plus')} Thêm thành viên</button>
+    <button class="btn btn-primary" id="nsThem" style="margin-bottom:14px">${ic('plus')} Thêm thành viên</button>
     <div class="card mb0">
       ${ds.map((n) => `
         <div class="list-item" data-nv="${n.ma_nv}" style="cursor:pointer">
@@ -154,7 +186,7 @@ async function veNhanSu(box) {
       </div>
       <div class="field"><label>Mật khẩu ban đầu (≥ 6 ký tự, hệ thống sẽ bắt đổi khi đăng nhập)</label>
         <input class="input" id="tMk"></div>
-      <button class="btn btn-gold" id="tOK">${ic('check')} Tạo tài khoản</button>`);
+      <button class="btn btn-primary" id="tOK">${ic('check')} Tạo tài khoản</button>`);
     $('#tOK', sh).onclick = () => busy($('#tOK', sh), async () => {
       try {
         await rpc('fn_admin_tao_nguoi_dung', {
@@ -180,7 +212,7 @@ async function veNhanSu(box) {
       </div>
       <div class="field"><label>Đặt lại mật khẩu (bỏ trống nếu giữ nguyên)</label>
         <input class="input" id="sMk" placeholder="Mật khẩu mới…"></div>
-      <button class="btn btn-gold" id="sOK">${ic('check')} Lưu thay đổi</button>
+      <button class="btn btn-primary" id="sOK">${ic('check')} Lưu thay đổi</button>
       <button class="btn ${khoa ? 'btn-quiet' : 'btn-danger'} mt" id="sKhoa">
         ${khoa ? ic('check') + ' Mở khóa tài khoản' : ic('x') + ' Tạm khóa tài khoản'}</button>`);
 
