@@ -1,4 +1,4 @@
-# CÔNG VIỆC — v0.1.4
+# CÔNG VIỆC — v0.1.5
 
 **Hệ thống báo cáo & quản trị công việc** cho Ban Quản trị Nón Sơn.
 PWA thuần (không cần build) · GitHub Pages · Supabase Pro region Sydney · Claude API.
@@ -58,7 +58,12 @@ supabase/  (KHÔNG nằm trong repo HTML, giữ trên máy anh làm tham chiếu
 2. **Chạy SQL** trong SQL Editor theo thứ tự: `01_schema.sql` → `02_functions.sql` → `03_seed_cron.sql` → `04_storage.sql`.
    Nếu 03 báo thiếu `pg_cron`: Database → Extensions → bật **pg_cron** → chạy lại.
 3. **Deploy Edge Function `ai-gateway`** — Edge Functions → Deploy a new function → tên đúng `ai-gateway` → dán nội dung `functions/ai-gateway/index.ts` → Deploy.
-4. **Thêm secret Claude** — Edge Functions → Secrets → `ANTHROPIC_API_KEY` = `sk-ant-...`.
+4. **Thêm secrets** — Edge Functions → Secrets:
+   - `ANTHROPIC_API_KEY` = `sk-ant-...`
+   - `CRON_SECRET` = `cv_a8f3e91d27b64c5f9a01d4e6b8c2f7a3`
+   - `VAPID_PUBLIC` = `BAKOctpIobn0_A0cm0zKj6dj3dPZAjYoWKklMgRBWPuKtQWkPSdY6Dx6pvzSydfpUN5und9cqAkda8sFHRWhlhw`
+   - `VAPID_PRIVATE` = `DBRrVhs7eSlISvtYAkllcDwv0Ze7sVOj3TovSfGUDHM`
+4b. **Deploy thêm 2 Edge Function**: `push-sender` và `daily-digest` (dán từ file kèm patch).
 5. **Cấu hình frontend** — điền `SUPA_URL` và `SUPA_ANON` (Settings → API) vào `js/00-config.js`.
 6. **Deploy repo** lên GitHub Pages.
 7. **Đăng nhập lần đầu** — `NS00490` / `Congviec@2026` → hệ thống bắt đổi mật khẩu.
@@ -72,7 +77,7 @@ supabase/  (KHÔNG nằm trong repo HTML, giữ trên máy anh làm tham chiếu
 | Đăng nhập | Mã NV + mật khẩu, buộc đổi lần đầu, phiên 30 ngày | ✅ v0.1.0 |
 | | iPhone gõ được ô mật khẩu | ✅ v0.1.1 |
 | | Nút con mắt hiện/ẩn mật khẩu | ✅ v0.1.1 |
-| | Đăng nhập khuôn mặt | ❌ Patch 04 |
+| | Đăng nhập khuôn mặt (on-device, 2 lớp so khớp) | ✅ v0.1.5 ⚠️ cần test máy thật |
 | Check-in | 4 trạng thái · timeline di chuyển | ✅ v0.1.0 |
 | Ghi âm | Liền mạch kiểu ChatGPT (Tạm dừng/Gửi ngay) · lưu file gốc | ✅ v0.1.0 |
 | Trợ lý AI | Cá nhân theo tên · 6 công cụ agentic · bản xem trước Xác nhận | ✅ v0.1.0 |
@@ -81,7 +86,7 @@ supabase/  (KHÔNG nằm trong repo HTML, giữ trên máy anh làm tham chiếu
 | | Đối chiếu kế hoạch: phản hồi từng mục, thiếu bị đòi, tự cập nhật kế hoạch | ✅ v0.1.4 |
 | Kế hoạch | Tạo bằng giọng nói / form · nhắc trước X phút · 14 ngày | ✅ v0.1.0 |
 | Nhắc việc | Auto: check-in 9:00 · báo cáo 17:00 · kế hoạch đến giờ · quá hạn | ✅ v0.1.0 (hiện in-app) |
-| | Web Push (khi app đóng) | ❌ Patch 04 |
+| | Web Push khi app đóng (VAPID + push-sender 5 phút/lần) | ✅ v0.1.5 ⚠️ cần test máy thật |
 | Admin | Tạo/sửa/khóa tài khoản · reset mật khẩu · phòng ban | ✅ v0.1.0 |
 | Dashboard BQT | Nhân sự hôm nay · vấn đề nổi đầu · báo cáo toàn công ty 7 ngày | ✅ v0.1.0 |
 | | Nhóm theo địa điểm: VP·Xưởng nón vải / Xưởng BH / Công tác (rõ nơi) / Chưa gửi | ✅ v0.1.4 |
@@ -89,13 +94,49 @@ supabase/  (KHÔNG nằm trong repo HTML, giữ trên máy anh làm tham chiếu
 | | Realtime tự cập nhật | ❌ Patch 04 |
 | Nhật ký AI | Bản gốc ↔ bản chuẩn hóa · đếm token/người | ✅ v0.1.0 |
 | Giao diện | Deep Navy Aurora: sáng (mặc định) + tối, glass, glow, mesh | ✅ v0.1.4 |
-| Công việc 2 dạng | Thường xuyên / có thời hạn + timeline 360 (thiết kế xong, xem mục Kiến trúc) | ❌ v0.1.5 |
-| Giao việc | Hạng mục · deadline · tiến độ (bảng đã sẵn, UI chưa mở) | ❌ v0.1.5 |
+| Công việc 2 dạng | Thường xuyên (tự sinh kế hoạch theo chu kỳ) / có thời hạn | ✅ v0.1.5 |
+| Giao việc | ADMIN/Trưởng BP giao người hoặc phòng · ưu tiên · báo người nhận | ✅ v0.1.5 |
+| Chi tiết 360 | Timeline mốc tự tính tiến độ · dòng hoạt động gom KH+BC+cập nhật · thống kê tuân thủ | ✅ v0.1.5 |
+| Tóm tắt AI | Cuối ngày 18:30 cho BQT (bảng tong_hop_ngay + push) | ✅ v0.1.5 |
+| Dashboard | Tự cập nhật 30 giây khi mở tab Tổng quan | ✅ v0.1.5 |
+| Trợ lý | Biết công việc đang phụ trách · tool cập nhật tiến độ tự động | ✅ v0.1.5 |
 | Tóm tắt AI | Cuối ngày 18:30 · cuối tuần · cuối tháng | ❌ Patch 05 |
 
 ---
 
 ## NHẬT KÝ NỐI TIẾP
+
+### v0.1.5 — 08/07/2026 · Phát triển toàn bộ các nhánh còn lại
+
+**① Công việc 2 dạng + Giao việc + Chi tiết 360 (tab "Việc" mới):**
+- Dạng **thường xuyên**: chu kỳ theo thứ/ngày tháng + giờ; cron 05:30 VN tự sinh kế hoạch con cho từng người (giao phòng = cả phòng), chống trùng — chảy thẳng vào vòng đời Kế hoạch↔Báo cáo có sẵn; thống kê "Kỷ luật 30 ngày" (% tuân thủ).
+- Dạng **có thời hạn**: hạn hoàn thành + mốc lộ trình; đánh dấu mốc XONG → tiến độ tự tính; đủ 100% tự HOAN_THANH; cron 08:00 nhắc deadline còn ≤24h / quá hạn.
+- **Chi tiết 360**: đếm ngược hạn, thanh tiến độ, timeline mốc (trễ = đỏ), **dòng hoạt động** gom kế hoạch + phản hồi báo cáo + nhật ký cập nhật về một chỗ, cập nhật tiến độ bằng slider + ghi chú + mic, nút Vướng mắc / Hoàn thành.
+- Giao việc: ADMIN toàn quyền; TRUONG_BP trong phòng mình; người nhận được nhắc ngay.
+- Trợ lý biết danh sách công việc đang phụ trách → *"việc kho mới xong được nửa rồi"* → tự cập nhật tiến độ 50% + ghi nhật ký (auto, có trong thẻ Đã xử lý).
+
+**② Web Push (nhắc khi không mở app):**
+- Cặp khóa VAPID đã sinh sẵn, public nằm trong `00-config.js`, private đặt vào Secrets.
+- Edge Function `push-sender`: cron gọi 5 phút/lần, đẩy các nhắc việc tới hạn, tự dọn subscription chết (404/410).
+- Bật/tắt trong Tài khoản → Thông báo. iPhone: cần cài app lên màn hình chính (iOS 16.4+).
+
+**③ Đăng nhập khuôn mặt:**
+- Nhận diện **100% trên thiết bị** (face-api ~6MB tải 1 lần, SW cache) — ảnh mặt không rời máy, chỉ lưu vector 128 số.
+- 2 lớp so khớp: local (nhanh) → server `fn_dang_nhap_khuon_mat` xác nhận (ngưỡng 0.5) → cấp phiên.
+- Sau đăng nhập mật khẩu đầu tiên, app mời kích hoạt 3 giây; bật/tắt trong Tài khoản. Lỗi model/camera → tự ẩn, mật khẩu không bị ảnh hưởng.
+
+**④ Tóm tắt AI cuối ngày cho BQT:**
+- Edge Function `daily-digest` 18:30 VN (T2–T7): gom vị trí, báo cáo, vấn đề, kỷ luật, kế hoạch mai → Claude viết "Tình hình vận hành hôm nay" ≤300 chữ → lưu + nhắc/push các ADMIN. Hiện đầu tab Quản trị.
+
+**⑤ Dashboard tự cập nhật 30 giây** khi mở tab Tổng quan (tạm dừng khi màn hình ẩn hoặc đang mở sheet).
+
+**File thay đổi (frontend):** `js/06-push.js` (mới), `js/07-face.js` (mới), `js/15-tab-congviec.js` (mới), `js/00-config.js`, `js/02-auth.js`, `js/03-ui.js`, `js/05-troly.js`, `js/13-tab-taikhoan.js`, `js/14-tab-quantri.js`, `js/99-app.js`, `sw.js`, `css/app.css`, `README.md`.
+**SQL:** `UPDATE_v0.1.5.sql` — kèm bổ sung bảng `cong_viec_capnhat` bị thiếu từ schema gốc (test local phát hiện).
+**Edge Functions:** dán lại `ai-gateway` (v3) + tạo mới `push-sender`, `daily-digest`.
+**Secrets mới cần đặt:** `CRON_SECRET`, `VAPID_PUBLIC`, `VAPID_PRIVATE` (giá trị trong mục Triển khai bên dưới).
+**Kiểm chứng:** 10/10 kịch bản SQL pass (routine chống trùng, mốc tự tính 50%, 360 đủ khóa, deadline nhắc, face khớp/từ chối, push RPC, digest). Toàn bộ JS pass syntax. ⚠️ Web Push và khuôn mặt cần Aroma test trên iPhone thật — 2 tính năng phụ thuộc thiết bị, code đã defensive (lỗi → tự ẩn, không phá luồng chính).
+
+---
 
 ### v0.1.4 — 08/07/2026 · Deep Navy Aurora + Trợ lý 2.0 + Vòng đời Kế hoạch↔Báo cáo
 
@@ -231,6 +272,4 @@ supabase/  (KHÔNG nằm trong repo HTML, giữ trên máy anh làm tham chiếu
 
 ## LỘ TRÌNH PATCH KẾ TIẾP
 
-**v0.1.5:** Công việc 2 dạng (thường xuyên / có thời hạn) + màn Chi tiết 360 + thống kê — theo kiến trúc ở mục trên, chờ Aroma duyệt.
-
-**v0.1.6:** Web Push (nhắc khi app đóng) · đăng nhập khuôn mặt (cần module từ App Chấm công) · Realtime dashboard · tóm tắt AI cuối ngày 18:30 cho BQT.
+**v0.1.6 (dự kiến):** Trợ lý hỏi đáp sâu ("tuần này phòng kho có vấn đề gì", "việc X tới đâu rồi" trả lời bằng dữ liệu thật) · tổng hợp tuần/tháng · biểu đồ hiệu suất người/phòng · xuất báo cáo Word trình TGĐ.

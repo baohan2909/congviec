@@ -57,6 +57,15 @@ async function thucThiAuto(tc) {
     return { icon: 'calendar', mota: `Đã lên kế hoạch: ${i.tieu_de} — ${fmtNgayGio(i.thoi_gian)}`,
       undo: () => rpc('fn_cap_nhat_ke_hoach', { p_id: r.id, p_trang_thai: 'DA_HUY' }) };
   }
+  if (tc.name === 'cap_nhat_cong_viec') {
+    await rpc('fn_cap_nhat_cong_viec', { p_id: Number(i.id), p_thay_doi: {
+      ...(Number.isFinite(Number(i.tien_do)) ? { tien_do: Number(i.tien_do) } : {}),
+      ...(i.trang_thai ? { trang_thai: i.trang_thai } : {}),
+      ghi_chu: i.ghi_chu || 'Cập nhật qua trợ lý',
+    }});
+    return { icon: 'briefcase',
+      mota: `Đã cập nhật công việc${Number.isFinite(Number(i.tien_do)) ? ` — tiến độ ${i.tien_do}%` : ''}: ${i.ghi_chu || ''}` };
+  }
   if (tc.name === 'tao_nhac_viec') {
     const r = await rpc('fn_tao_ke_hoach', {
       p_tieu_de: i.noi_dung, p_thoi_gian: i.lich_gui,

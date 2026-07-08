@@ -5,6 +5,7 @@
 import { rpc, phien, loiNguoi } from './01-supabase.js';
 import { $, ic, toast, busy, openSheet, closeSheet } from './03-ui.js';
 import { MC, SYS } from './00-config.js';
+import { faceLocal, dangNhapKhuonMat, dangKyKhuonMat } from './07-face.js';
 
 export function renderLogin(onOK) {
   const el = $('#screen-login');
@@ -15,6 +16,12 @@ export function renderLogin(onOK) {
         <h1 class="login-title">Công việc</h1>
         <p class="login-sub">Hệ thống báo cáo &amp; quản trị công việc</p>
         <div class="card">
+          <div id="lgFaceBox" class="hidden" style="margin-bottom:14px">
+            <button class="btn btn-primary" id="lgFace" type="button">${ic('scan')} Đăng nhập bằng khuôn mặt</button>
+            <div class="row" style="justify-content:center;margin:12px 0 2px">
+              <span class="muted" style="font-size:13px">hoặc dùng mật khẩu</span>
+            </div>
+          </div>
           <form id="lgForm" autocomplete="on" novalidate>
             <div class="field"><label for="lgMa">Mã nhân viên</label>
               <input class="input mono" id="lgMa" name="username" type="text"
@@ -37,6 +44,20 @@ export function renderLogin(onOK) {
           Công việc · v${SYS.version}</p>
       </div>
     </div>`;
+
+  // Đăng nhập khuôn mặt (nếu máy này đã đăng ký)
+  const fl = faceLocal();
+  if (fl) {
+    $('#lgFaceBox').classList.remove('hidden');
+    $('#lgMa').value = fl.ma_nv;
+    $('#lgFace').onclick = async () => {
+      const data = await dangNhapKhuonMat();
+      if (!data) return;
+      phien.set(data);
+      if (data.nguoi_dung.phai_doi_mat_khau) doiMatKhauLanDau(onOK);
+      else onOK();
+    };
+  }
 
   // Hiện/ẩn mật khẩu
   $('#lgEye').onclick = () => {
@@ -107,4 +128,19 @@ export async function dangXuat() {
   try { await rpc('fn_dang_xuat'); } catch {}
   phien.clear();
   location.reload();
+}
+
+
+function goiYFace(onOK) {
+  const sh = openSheet(`
+    <h3>${ic('scan')} Đăng nhập bằng khuôn mặt</h3>
+    <p class="muted">Từ lần sau, chỉ cần nhìn vào camera là vào ngay — không cần gõ mật khẩu. Khuôn mặt được nhận diện ngay trên thiết bị của anh/chị ạ.</p>
+    <button class="btn btn-primary" id="gfOK">${ic('scan')} Kích hoạt ngay (3 giây)</button>
+    <button class="btn btn-quiet mt" id="gfBo">Để sau</button>`);
+  $('#gfOK', sh).onclick = async () => {
+    closeSheet();
+    await dangKyKhuonMat();
+    onOK();
+  };
+  $('#gfBo', sh).onclick = () => { closeSheet(); onOK(); };
 }

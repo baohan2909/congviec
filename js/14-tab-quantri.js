@@ -7,7 +7,17 @@ import { MC } from './00-config.js';
 
 let seg = 'tongquan';
 
+let qtTimer = null;
+
 export function renderQuanTri(root) {
+  clearInterval(qtTimer);
+  qtTimer = setInterval(() => {
+    if (!document.hidden && seg === 'tongquan' && root.isConnected && !document.querySelector('#sheetBox')) {
+      veTongQuan(document.querySelector('#qtBody') || root);
+    }
+    if (!root.isConnected) clearInterval(qtTimer);
+  }, 30000);
+
   root.innerHTML = `
     <div class="page-head"><div>
       <h1 class="page-title">Quản trị</h1>
@@ -60,7 +70,15 @@ async function veTongQuan(box) {
                      : `<span class="badge badge-warn">Chưa BC</span>`}
     </div>`;
 
+  let tomTat = [];
+  try { tomTat = await rpc('fn_bqt_tong_hop'); } catch {}
+
   box.innerHTML = `
+    ${tomTat.length ? `
+      <div class="card preview-card">
+        <h2 class="card-title">${ic('sparkle')} Tổng hợp AI — ${fmtNgay(tomTat[0].ngay)}</h2>
+        <div style="font-size:15px">${nl2html(tomTat[0].noi_dung)}</div>
+      </div>` : ''}
     <div class="stat-row">
       <div class="stat"><b>${ns.length}</b><span>Thành viên</span></div>
       <div class="stat"><b style="color:${chua.length ? 'var(--danger)' : 'var(--acc-ink)'}">${chua.length}</b><span>Chưa cập nhật vị trí</span></div>

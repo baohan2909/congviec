@@ -5,10 +5,11 @@
 //   ③ app_settings.cache_version (SQL)
 // ============================================================
 export const SYS = {
-  version: '0.1.4',
+  version: '0.1.5',
   SUPA_URL: 'https://yfpapcepfbnuymfkrcqi.supabase.co',
   SUPA_ANON: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmcGFwY2VwZmJudXltZmtyY3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0OTU2OTksImV4cCI6MjA5OTA3MTY5OX0.217nGrPBzVnfxHWWOimJCzVSReMCXwmBxS5Hvx2p0ZU',
   BUCKET: 'bao-cao',
+  VAPID_PUBLIC: 'BAKOctpIobn0_A0cm0zKj6dj3dPZAjYoWKklMgRBWPuKtQWkPSdY6Dx6pvzSydfpUN5und9cqAkda8sFHRWhlhw',
 };
 
 export const AI_GATEWAY = () => `${SYS.SUPA_URL}/functions/v1/ai-gateway`;
@@ -41,6 +42,12 @@ export const MC = {
   taiKhoanKhoa: 'Tài khoản đang tạm khóa ạ. Anh/chị liên hệ Quản trị viên giúp em nhé.',
   doiMkThanhCong: 'Em đã đổi mật khẩu thành công ạ.',
   khongNhanGiongNoi: 'Thiết bị này chưa hỗ trợ nhận giọng nói ạ. Anh/chị có thể gõ nội dung, em vẫn hỗ trợ chuẩn hóa như thường.',
+  faceDangQuet: 'Anh/chị nhìn thẳng vào camera giúp em vài giây ạ…',
+  faceThanhCong: 'Em nhận ra rồi ạ. Chào mừng anh/chị quay lại.',
+  faceKhongKhop: 'Em chưa nhận ra được ạ. Anh/chị đăng nhập bằng mật khẩu giúp em nhé.',
+  faceDaDangKy: 'Em đã ghi nhớ khuôn mặt. Lần sau chỉ cần một chạm là vào ạ.',
+  pushDaBat: 'Em sẽ nhắc anh/chị qua thông báo kể cả khi không mở app ạ.',
+  pushTuChoi: 'Thiết bị đang chặn thông báo ạ. Anh/chị bật lại trong Cài đặt của máy giúp em nhé.',
 };
 
 // Bản đồ lỗi RPC → lời người

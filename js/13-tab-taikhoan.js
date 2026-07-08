@@ -5,6 +5,8 @@ import { rpc, phien, loiNguoi } from './01-supabase.js';
 import { $, ic, esc, toast, openSheet, closeSheet, busy } from './03-ui.js';
 import { MC, SYS } from './00-config.js';
 import { dangXuat } from './02-auth.js';
+import { trangThaiPush, batPush, tatPush, pushHoTro } from './06-push.js';
+import { faceLocal, dangKyKhuonMat, huyDangKyKhuonMat } from './07-face.js';
 
 const TEN_VT = { ADMIN: 'Quản trị viên', TRUONG_BP: 'Trưởng bộ phận', NHAN_VIEN: 'Thành viên' };
 
@@ -40,9 +42,15 @@ export function renderTaiKhoan(root) {
     </div>
 
     <div class="card">
+      <h2 class="card-title">${ic('bell')} Thông báo</h2>
+      <button class="btn btn-quiet" id="tkPush"><span class="spinner"></span></button>
+      <p class="muted mt mb0" style="font-size:13px">Nhắc kế hoạch, báo cáo, deadline kể cả khi không mở app. Trên iPhone cần cài app lên màn hình chính trước ạ.</p>
+    </div>
+
+    <div class="card">
       <h2 class="card-title">${ic('key')} Bảo mật</h2>
       <button class="btn btn-quiet" id="tkDoiMk">${ic('key')} Đổi mật khẩu</button>
-      <button class="btn btn-quiet mt" disabled>${ic('eye')} Đăng nhập khuôn mặt — bản cập nhật kế tiếp</button>
+      <button class="btn btn-quiet mt" id="tkFace">${ic('scan')} ${faceLocal() ? 'Tắt đăng nhập khuôn mặt' : 'Bật đăng nhập khuôn mặt'}</button>
     </div>
 
     <button class="btn btn-danger" id="tkOut">${ic('out')} Đăng xuất</button>
@@ -56,6 +64,33 @@ export function renderTaiKhoan(root) {
       ?.setAttribute('content', th === 'dark' ? '#050B1F' : '#EEF3FA');
     renderTaiKhoan(root);
   });
+
+  // Push
+  (async () => {
+    const btn = $('#tkPush', root);
+    const tt = await trangThaiPush();
+    const veNut = (t) => {
+      btn.innerHTML = t === 'DANG_BAT'
+        ? `${ic('bell')} Tắt thông báo đẩy`
+        : `${ic('bell')} Bật thông báo đẩy`;
+      btn.disabled = (t === 'KHONG_HO_TRO');
+      if (t === 'KHONG_HO_TRO') btn.innerHTML = `${ic('bell')} Thiết bị chưa hỗ trợ thông báo`;
+      if (t === 'BI_CHAN') btn.innerHTML = `${ic('bell')} Thông báo đang bị chặn trong Cài đặt máy`;
+    };
+    veNut(tt);
+    btn.onclick = async () => {
+      const t = await trangThaiPush();
+      if (t === 'DANG_BAT') { await tatPush(); veNut('CHUA_BAT'); }
+      else { const ok = await batPush(); veNut(ok ? 'DANG_BAT' : await trangThaiPush()); }
+    };
+  })();
+
+  // Face
+  $('#tkFace', root).onclick = async () => {
+    if (faceLocal()) { await huyDangKyKhuonMat(); }
+    else { await dangKyKhuonMat(); }
+    renderTaiKhoan(root);
+  };
 
   $('#tkDoiMk', root).onclick = () => {
     const sh = openSheet(`

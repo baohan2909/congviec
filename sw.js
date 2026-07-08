@@ -2,7 +2,7 @@
 // CÔNG VIỆC — Service Worker
 // ⚠️ VERSION BUMP: đổi cùng SYS.version (00-config.js) + app_settings
 // ============================================================
-const CACHE_VERSION = 'congviec-0.1.4';
+const CACHE_VERSION = 'congviec-0.1.5';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './css/app.css',
   './js/00-config.js', './js/01-supabase.js', './js/02-auth.js',
@@ -43,4 +43,24 @@ self.addEventListener('fetch', (e) => {
       return hit || net;
     })
   );
+});
+
+// ---------- WEB PUSH ----------
+self.addEventListener('push', (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch {}
+  e.waitUntil(self.registration.showNotification(d.title || 'Công việc', {
+    body: d.body || '',
+    icon: './icons/icon-192.png',
+    badge: './icons/icon-192.png',
+    tag: 'congviec',
+    data: { url: './' },
+  }));
+});
+self.addEventListener('notificationclick', (e) => {
+  e.notification.close();
+  e.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then((ws) => {
+    for (const w of ws) if ('focus' in w) return w.focus();
+    return clients.openWindow('./');
+  }));
 });

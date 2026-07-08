@@ -8,6 +8,7 @@ import { renderHomNay } from './10-tab-homnay.js';
 import { renderBaoCao } from './11-tab-baocao.js';
 import { renderKeHoach } from './12-tab-kehoach.js';
 import { renderTaiKhoan } from './13-tab-taikhoan.js';
+import { renderCongViec } from './15-tab-congviec.js';
 import { renderQuanTri } from './14-tab-quantri.js';
 
 // ---------- Theme (sáng mặc định) ----------
@@ -27,6 +28,7 @@ const TABS = [
   { id: 'homnay',   icon: 'sun',      label: 'Hôm nay',   render: renderHomNay },
   { id: 'baocao',   icon: 'file',     label: 'Báo cáo',   render: renderBaoCao },
   { id: 'kehoach',  icon: 'calendar', label: 'Kế hoạch',  render: renderKeHoach },
+  { id: 'congviec', icon: 'briefcase', label: 'Việc',     render: renderCongViec },
   { id: 'taikhoan', icon: 'user',     label: 'Tài khoản', render: renderTaiKhoan },
 ];
 let current = 'homnay';
@@ -37,7 +39,7 @@ function startApp() {
 
   const tabs = [...TABS];
   if (phien.nd()?.vai_tro === 'ADMIN') {
-    tabs.splice(3, 0, { id: 'quantri', icon: 'shield', label: 'Quản trị', render: renderQuanTri });
+    tabs.splice(4, 0, { id: 'quantri', icon: 'shield', label: 'Quản trị', render: renderQuanTri });
   }
 
   $('#tabbar').innerHTML = tabs.map((t) => `
