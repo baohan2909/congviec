@@ -13,7 +13,7 @@ const CDN     = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15';
 const NGUONG  = 0.5;
 const NGUONG_SERVER = NGUONG + 0.1;
 const KEY     = 'cv_face';
-const CHUKY_QUET = 260;
+const CHUKY_QUET = 110;
 
 let faceapi = null;
 let modelPromise = null;
@@ -89,14 +89,17 @@ function taoOverlay() {
   ov.dataset.state = 'dang-tai';   // spinner mượt ngay từ frame đầu, không vẽ 1/4
   ov.innerHTML = `
     <div class="face-cage" role="img" aria-label="Camera nhận diện">
+      <div class="face-video-wrap">
+        <video id="fvVideo" autoplay playsinline muted></video>
+        <div class="face-scan"></div>
+        <div class="face-mesh"></div>
+        <div class="face-check">${ic('check')}</div>
+      </div>
       <svg class="face-ring-svg" viewBox="0 0 260 260" aria-hidden="true">
         <circle class="fr-track" cx="130" cy="130" r="122"/>
         <circle class="fr-progress" cx="130" cy="130" r="122"/>
       </svg>
-      <div class="face-video-wrap">
-        <video id="fvVideo" autoplay playsinline muted></video>
-        <div class="face-check">${ic('check')}</div>
-      </div>
+      <div class="face-corners"><i></i><i></i><i></i><i></i></div>
     </div>
     <p class="rec-hint" id="fvHint">${MC.faceDangQuet}</p>
     <button class="btn btn-quiet" id="fvHuy" style="width:auto;min-width:180px">${ic('x')} Hủy</button>`;
@@ -113,18 +116,14 @@ async function quetVongLap(video, ov, timeoutMs = 9000) {
   const api = faceapi;
   const opts = new api.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
   const t0 = Date.now();
-  let khungBatDuoc = 0;
   while (Date.now() - t0 < timeoutMs) {
     if (!ov.isConnected) return null;
     try {
       const kq = await api.detectSingleFace(video, opts)
         .withFaceLandmarks(true).withFaceDescriptor();
-      if (kq?.descriptor) {
-        khungBatDuoc++;
-        if (khungBatDuoc >= 2) return Array.from(kq.descriptor);
-        setState(ov, 'dang-tim', 'Em bắt được rồi, giữ yên thêm chút ạ…');
-      } else if (khungBatDuoc === 0 && Date.now() - t0 > 1200) {
-        setState(ov, 'dang-tim', 'Em chưa thấy khuôn mặt, anh/chị nhìn thẳng camera giúp em ạ.');
+      if (kq?.descriptor) return Array.from(kq.descriptor);  // bắt 1 khung tốt là đủ → nhanh
+      if (Date.now() - t0 > 1000) {
+        setState(ov, 'dang-tim', 'Anh/chị nhìn thẳng camera giúp em ạ.');
       }
     } catch {}
     await new Promise((r) => setTimeout(r, CHUKY_QUET));
@@ -144,7 +143,7 @@ async function chayLuong(ov, timeoutMs) {
     video.oncanplay = () => r();
     setTimeout(r, 800); // phòng hờ
   });
-  await new Promise((r) => setTimeout(r, 300)); // để vài frame đầu mượt
+  await new Promise((r) => setTimeout(r, 120)); // vài frame đầu mượt
   // 3) Đảm bảo model + warmup xong rồi mới quét (không block khi camera đang mở)
   setState(ov, 'san-sang', MC.faceDangQuet);
   try { await modelReady; } catch { toast('Chưa tải được mô hình nhận diện ạ.', 'err'); dongOverlay(ov); return null; }
@@ -217,7 +216,7 @@ export async function dangNhapKhuonMat() {
       p_ma_nv: local.ma_nv, p_embedding: emb,
       p_thiet_bi: navigator.userAgent.slice(0, 120),
     }, false);
-    await dongOverlay(ov, 700);
+    await dongOverlay(ov, 200);
     return data;
   } catch (e) {
     setState(ov, 'that-bai',
