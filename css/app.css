@@ -771,3 +771,35 @@ html[data-theme="dark"] .login-title {
 /* Nơi làm việc hiện tại: đồng hồ + mốc hiện tại */
 .wn-clock { font-size: 20px; font-weight: 700; color: var(--acc-ink); }
 .tl li.tl-now .tl-place { font-weight: 700; color: var(--acc-ink); }
+
+/* ---------- Timeline NƠI LÀM VIỆC (giống lịch trong ngày) ---------- */
+.wl-tl { list-style: none; margin: 6px 0 0; padding: 0; position: relative; }
+.wl-row { display: flex; align-items: center; gap: 12px; padding: 10px 0 10px 20px;
+  position: relative; border-bottom: 1px solid var(--line); }
+.wl-row:last-child { border-bottom: none; }
+.wl-row::before { content: ""; position: absolute; left: 4px; top: 18px;
+  width: 9px; height: 9px; border-radius: 50%; background: var(--line-2); }
+.wl-row.wl-now::before { background: var(--acc); box-shadow: 0 0 0 4px var(--acc-soft); }
+.wl-time { flex: 0 0 auto; font-size: 14px; font-weight: 700; color: var(--ink-2); min-width: 46px; }
+.wl-place { flex: 1; font-size: 15px; }
+.wl-row.wl-now .wl-place { font-weight: 700; color: var(--acc-ink); }
+.wl-edit { flex: 0 0 auto; width: 38px; height: 38px; border: none; background: transparent;
+  color: var(--ink-3); cursor: pointer; border-radius: 8px; display: grid; place-items: center; }
+.wl-edit:active { background: var(--surface-2); transform: scale(.92); }
+.wl-edit .ic { width: 19px; height: 19px; }
+
+/* Quản lý nhân sự */
+.ns-row { display: flex; align-items: center; gap: 10px; padding: 10px 0;
+  border-bottom: 1px solid var(--line); }
+.ns-row:last-child { border-bottom: none; }
+.ns-main { flex: 1; min-width: 0; }
+.ns-ten { font-size: 15px; font-weight: 600; }
+.ns-sub { font-size: 12.5px; color: var(--ink-3); margin-top: 2px; }
+
+/* Người ĐANG HOẠT ĐỘNG (đã chấm hoặc có kế hoạch): ô + dấu tròn gradient hệ thống */
+.dot-bc.act { background: var(--acc-grad); box-shadow: 0 0 8px var(--acc-glow); }
+.person-active {
+  background: linear-gradient(100deg, var(--acc-soft) 0%, transparent 70%);
+  border-radius: 12px;
+}
+.person-active .list-title { color: var(--acc-ink); }

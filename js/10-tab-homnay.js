@@ -83,11 +83,16 @@ function veCheckin(root) {
   }
 
   const ten = (D.trang_thai_ds || []).find((t) => t.ma === c.loai)?.ten || c.loai;
-  // Nơi làm việc HIỆN TẠI: mục di chuyển có giờ ≤ bây giờ và gần nhất; nếu chưa có thì lấy check-in gốc
   const gioBayGio = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
-  const dcSorted = [...(D.di_chuyen || [])].sort((a, b) => (a.gio > b.gio ? 1 : -1));
-  const dcHienTai = dcSorted.filter((d) => d.gio <= gioBayGio).pop();
-  const noiHienTai = dcHienTai ? dcHienTai.dia_diem : (c.dia_diem || ten);
+  // Timeline nơi làm việc = các mục KẾ HOẠCH hôm nay CÓ ĐỊA ĐIỂM, sắp theo giờ
+  const moc = (D.ke_hoach || [])
+    .filter((k) => k.dia_diem)
+    .map((k) => ({ id: k.id, gio: fmtGio(k.thoi_gian), iso: k.thoi_gian, noi: k.dia_diem, tieu_de: k.tieu_de }))
+    .sort((a, b) => new Date(a.iso) - new Date(b.iso));
+  const nowISO = new Date().toISOString();
+  const mocHienTai = moc.filter((m) => m.iso <= nowISO).pop();
+  const noiHienTai = mocHienTai ? mocHienTai.noi : (c.dia_diem || ten);
+
   box.innerHTML = `
     <div class="hd-ngay"><h2 class="card-title mb0">${ic('pin')} Nơi làm việc hiện tại</h2>
       <span class="wn-clock mono" id="hnClock">${gioBayGio}</span></div>
@@ -96,32 +101,53 @@ function veCheckin(root) {
       ${noiHienTai && noiHienTai !== ten ? `<span class="wn-place">${ic('pin')} ${esc(noiHienTai)}</span>` : ''}
       ${c.ghi_chu ? `<div class="muted" style="font-size:14px;width:100%">${esc(c.ghi_chu)}</div>` : ''}
     </div>
-    ${(D.di_chuyen || []).length ? `
-      <hr class="hr"><ul class="tl">
-        ${dcSorted.map((d) => `<li ${d === dcHienTai ? 'class="tl-now"' : ''}>
-          <span class="tl-time">${esc(d.gio)}</span>
-          <div class="tl-place">${esc(d.dia_diem)}${d === dcHienTai ? ' <span class="badge badge-acc">hiện tại</span>' : ''}</div>
-          ${d.ly_do ? `<div class="tl-note">${esc(d.ly_do)}</div>` : ''}
+    ${moc.length ? `
+      <hr class="hr"><ul class="wl-tl">
+        ${moc.map((m) => `<li class="wl-row ${m === mocHienTai ? 'wl-now' : ''}" data-id="${m.id}">
+          <span class="wl-time mono">${esc(m.gio)}</span>
+          <div class="wl-place">${esc(m.noi)}${m === mocHienTai ? ' <span class="badge badge-acc">hiện tại</span>' : ''}</div>
+          <button class="wl-edit" data-edit="${m.id}" aria-label="Sửa">${ic('edit', 'ic')}</button>
         </li>`).join('')}
-      </ul>` : ''}
-    <div class="row mt">
-      <button class="btn btn-quiet" id="ciChon">${ic('edit')} Đổi nơi làm việc</button>
-      <button class="btn btn-quiet" id="ciThem">${ic('plus')} Thêm nơi làm việc</button>
-    </div>`;
+      </ul>` : '<p class="muted" style="font-size:14px;margin:10px 0 0">Chưa có mốc nơi làm việc nào trong kế hoạch hôm nay ạ.</p>'}
+    <button class="btn btn-quiet btn-sm mt" id="ciThem" style="width:100%">${ic('plus')} Thêm nơi làm việc</button>`;
 
   // Đồng hồ giờ chạy (cập nhật mỗi 30s)
-  const clockEl = $('#hnClock', box);
-  if (clockEl) {
-    clearInterval(window._hnClock);
-    window._hnClock = setInterval(() => {
-      const el = document.getElementById('hnClock');
-      if (!el) { clearInterval(window._hnClock); return; }
-      el.textContent = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
-    }, 30000);
-  }
+  clearInterval(window._hnClock);
+  window._hnClock = setInterval(() => {
+    const el = document.getElementById('hnClock');
+    if (!el) { clearInterval(window._hnClock); return; }
+    el.textContent = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+  }, 30000);
 
-  $('#ciChon', box).onclick = () => formChonNoi(root);
   $('#ciThem', box).onclick = () => formDiChuyen(root);
+  $$('.wl-edit', box).forEach((b) => b.onclick = () => {
+    const m = moc.find((x) => String(x.id) === b.dataset.edit);
+    if (m) formSuaNoi(m, root);
+  });
+}
+
+// Sửa 1 mốc nơi làm việc (giờ + địa điểm) — cập nhật thẳng vào kế hoạch
+function formSuaNoi(m, root) {
+  const p = (n) => String(n).padStart(2, '0');
+  const d = new Date(m.iso);
+  const tg = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  const sh = openSheet(`
+    <h3>${ic('edit')} Sửa nơi làm việc</h3>
+    <div class="field"><label>Thời gian</label>
+      <input class="input" type="datetime-local" id="snTg" value="${tg}"></div>
+    <div class="field"><label>Địa điểm</label>
+      <input class="input" id="snNoi" value="${esc(m.noi)}"></div>
+    <button class="btn btn-primary mt" id="snOK">${ic('check')} Lưu</button>`);
+  $('#snOK', sh).onclick = () => busy($('#snOK', sh), async () => {
+    const noi = $('#snNoi', sh).value.trim(), tgv = $('#snTg', sh).value;
+    if (!noi || !tgv) { toast('Cho em xin giờ và địa điểm ạ.', 'err'); return; }
+    try {
+      await rpc('fn_sua_ke_hoach', { p_id: m.id, p_thay_doi: {
+        dia_diem: noi, thoi_gian: new Date(tgv).toISOString(),
+      }});
+      closeSheet(); toast('Em đã cập nhật ạ.'); renderHomNay(root);
+    } catch (e) { toast(loiNguoi(e), 'err'); }
+  });
 }
 
 // Đổi nơi làm việc chính: hiện lại lưới chọn trong sheet, không xóa dữ liệu cũ tới khi chọn
@@ -233,8 +259,11 @@ function veKeHoach(root) {
           ${k.dia_diem ? `<div class="list-sub">${esc(k.dia_diem)}</div>` : ''}
         </div>
         <button class="btn btn-sm btn-quiet" data-id="${k.id}">${ic('check')} Xong</button>
-      </div>`).join('')
-    : `<p class="muted mb0">${MC.chuaCoKeHoach}</p>`}`;
+      </div>`).join('') + `
+      <button class="btn btn-quiet mt" id="hnKhBtn">${ic('mic')} Lập thêm kế hoạch</button>`
+    : `<p class="muted">${MC.chuaCoKeHoach}</p>
+       <button class="btn btn-primary mt" id="hnKhBtn">${ic('mic')} Kế hoạch ngay</button>`}`;
+  $('#hnKhBtn', box) && ($('#hnKhBtn', box).onclick = () => moGhiAm('troly', { onSaved: () => renderHomNay(root) }));
   $$('button[data-id]', box).forEach((b) => b.onclick = () => busy(b, async () => {
     try {
       await rpc('fn_cap_nhat_ke_hoach', { p_id: Number(b.dataset.id), p_trang_thai: 'DA_THUC_HIEN' });

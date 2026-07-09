@@ -60,18 +60,21 @@ async function veTongQuan(box) {
   const initials = (h) => esc(h.trim().split(/\s+/).map((w) => w[0]).slice(-2).join('').toUpperCase());
   const tenTag = { VAN_PHONG: 'Văn phòng', XUONG_BH: 'Xưởng BH', CONG_TAC: 'Công tác ngoài', LAM_O_NHA: 'Tại nhà', NGHI_PHEP: 'Nghỉ phép' };
   // Thẻ nhân sự GỌN — 1 dòng, có tag vị trí, bấm để xem đầy đủ
-  const veNguoi = (n, congTac = false) => `
-    <div class="person-row" data-nv="${n.ma_nv}">
+  const veNguoi = (n, congTac = false) => {
+    const hoatDong = !!n.loai || !!khTheoNguoi[n.ma_nv];
+    return `
+    <div class="person-row ${hoatDong ? 'person-active' : ''}" data-nv="${n.ma_nv}">
       <div class="avatar sm">${initials(n.ho_ten)}</div>
       <div class="list-main">
         <div class="list-title" style="font-size:14px">${esc(n.ho_ten)}</div>
         <div class="list-sub" style="font-size:12px">${
           congTac && n.dia_diem ? `${ic('pin')} ${esc(n.dia_diem)}` : esc(n.ten_pb || '—')
-        }${n.di_chuyen?.length ? ` · ${n.di_chuyen.length} chặng` : ''}</div>
+        }${n.di_chuyen?.length ? ` · ${n.di_chuyen.length} chặng` : ''}${khTheoNguoi[n.ma_nv] ? ` · ${khTheoNguoi[n.ma_nv].ds.length} kế hoạch` : ''}</div>
       </div>
       ${n.loai ? `<span class="badge badge-acc" style="font-size:11px">${esc(tenTag[n.loai] || '')}</span>` : ''}
-      <span class="dot-bc ${n.da_bao_cao ? 'ok' : 'no'}" title="${n.da_bao_cao ? 'Đã báo cáo' : 'Chưa báo cáo'}"></span>
+      <span class="dot-bc ${hoatDong ? 'act' : (n.da_bao_cao ? 'ok' : 'no')}" title="${hoatDong ? 'Đang hoạt động' : 'Chưa cập nhật'}"></span>
     </div>`;
+  };
 
   let tomTat = [];
   try { tomTat = await rpc('fn_bqt_tong_hop'); } catch {}
@@ -108,8 +111,10 @@ async function veTongQuan(box) {
         ${chua.length ? `<span class="tagc miss" data-f="chua">${ic('alert')} Chưa cập nhật <b>${chua.length}</b></span>` : ''}
       </div>
       <div id="tqNguoi" class="mt">
-        ${chua.map((n) => `<div class="loc-row" data-grp="chua">${veNguoi(n)}</div>`).join('')}
-        ${nhomCoNguoi.map((g) => g.ds.map((n) => `<div class="loc-row" data-grp="${g.key}">${veNguoi(n, g.key === 'CONG_TAC')}</div>`).join('')).join('')}
+        ${ns.map((n) => ({ n, grp: n.loai || 'chua', congTac: n.loai === 'CONG_TAC',
+            hd: (!!n.loai || !!khTheoNguoi[n.ma_nv]) ? 1 : 0 }))
+          .sort((a, b) => (b.hd - a.hd) || a.n.ho_ten.localeCompare(b.n.ho_ten, 'vi'))
+          .map((x) => `<div class="loc-row" data-grp="${x.grp}">${veNguoi(x.n, x.congTac)}</div>`).join('')}
       </div>
     </div>
 

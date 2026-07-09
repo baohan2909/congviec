@@ -31,6 +31,13 @@ function napModel() {
       faceapi.nets.faceLandmark68TinyNet.loadFromUri(`${CDN}/model`),
       faceapi.nets.faceRecognitionNet.loadFromUri(`${CDN}/model`),
     ]);
+    // WARMUP: chạy 1 lần inference trên canvas trống để khởi động WebGL/backend,
+    // để lần detect THẬT đầu tiên không cold-start làm khựng video.
+    try {
+      const cv = document.createElement('canvas'); cv.width = 320; cv.height = 320;
+      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 });
+      await faceapi.detectSingleFace(cv, opts).withFaceLandmarks(true).withFaceDescriptor();
+    } catch {}
     return faceapi;
   })().catch((e) => { modelPromise = null; throw e; });
   return modelPromise;
@@ -125,13 +132,22 @@ async function quetVongLap(video, ov, timeoutMs = 9000) {
 }
 
 async function chayLuong(ov, timeoutMs) {
-  setState(ov, 'dang-tai', 'Em đang chuẩn bị…');
-  await napModel();
-  setState(ov, 'san-sang', MC.faceDangQuet);
   const video = $('#fvVideo', ov);
+  // 1) Mở camera TRƯỚC để hình hiện ngay (model preload/warmup chạy song song)
+  setState(ov, 'dang-tai', 'Em đang mở camera…');
+  const modelReady = napModel();          // song song, thường đã preload xong
   await moCamera(video);
+  // 2) Chờ video có khung hình thật + ổn định vài frame → hết giật đầu
+  await new Promise((r) => {
+    if (video.readyState >= 2) return r();
+    video.oncanplay = () => r();
+    setTimeout(r, 800); // phòng hờ
+  });
+  await new Promise((r) => setTimeout(r, 300)); // để vài frame đầu mượt
+  // 3) Đảm bảo model + warmup xong rồi mới quét (không block khi camera đang mở)
+  setState(ov, 'san-sang', MC.faceDangQuet);
+  try { await modelReady; } catch { toast('Chưa tải được mô hình nhận diện ạ.', 'err'); dongOverlay(ov); return null; }
   try {
-    await new Promise((r) => setTimeout(r, 250));
     setState(ov, 'dang-tim', 'Đang tìm khuôn mặt…');
     return await quetVongLap(video, ov, timeoutMs);
   } finally {

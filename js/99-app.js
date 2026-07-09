@@ -53,18 +53,38 @@ function startApp() {
       ${ic(t.icon)}<span>${t.label}</span><span class="dot"></span>
     </button>`).join('');
 
-  const goTab = (id) => {
+  // Mỗi tab một container riêng, giữ trong DOM → chuyển tab là hiện lại tức thì (không fetch lại).
+  const cont = {};       // id -> div container
+  const lanRender = {};  // id -> timestamp render gần nhất
+  const HET_HAN = 30000; // >30s coi là cũ, tải lại nền
+
+  const goTab = (id, epMoi = false) => {
     const t = tabs.find((x) => x.id === id);
     if (!t) return;
     current = id;
     window.cvTabHienTai = id;
     rung(8);
     $$('#tabbar .tab').forEach((b) => b.classList.toggle('active', b.dataset.id === id));
-    const paint = () => t.render($('#tabContent'));
-    if (document.startViewTransition) document.startViewTransition(paint);
-    else paint();
+
+    // tạo container nếu chưa có
+    if (!cont[id]) {
+      cont[id] = document.createElement('div');
+      $('#tabContent').appendChild(cont[id]);
+    }
+    // ẩn tất cả, hiện tab hiện tại
+    Object.entries(cont).forEach(([k, el]) => { el.style.display = k === id ? '' : 'none'; });
+
+    const chuaRender = !lanRender[id];
+    const quaCu = lanRender[id] && (Date.now() - lanRender[id] > HET_HAN);
+    if (chuaRender || quaCu || epMoi) {
+      const paint = () => { t.render(cont[id]); lanRender[id] = Date.now(); };
+      if (chuaRender && document.startViewTransition) document.startViewTransition(paint);
+      else paint();  // đã có DOM cũ → hiện ngay, render đè khi có dữ liệu mới
+    }
   };
-  window.cvGoTab = goTab;
+  // Ép render lại một tab (dùng sau khi có thao tác thay đổi dữ liệu)
+  window.cvLamMoiTab = (id) => { if (lanRender[id]) { lanRender[id] = 0; if (id === current) goTab(id, true); } };
+  window.cvGoTab = (id) => goTab(id);
 
   $$('#tabbar .tab').forEach((b) => b.onclick = () => goTab(b.dataset.id));
   goTab('homnay');

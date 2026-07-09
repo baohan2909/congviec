@@ -70,7 +70,7 @@ export function renderTaiKhoan(root) {
   if (nd.vai_tro === 'ADMIN') {
     $('#tkTaoTK', root).onclick = () => formTaoTaiKhoan();
     $('#tkImport', root).onclick = () => formImportExcel();
-    $('#tkNhanSu', root).onclick = () => { window.cvGoTab?.('quantri'); };
+    $('#tkNhanSu', root).onclick = () => formQuanLyNhanSu();
     $('#tkXoaDL', root).onclick = () => formXoaDuLieu();
   }
 
@@ -274,6 +274,92 @@ async function formImportExcel() {
       });
     } catch (err) { box.innerHTML = `<p class="muted mt">Không đọc được file ạ: ${esc(String(err.message || err))}</p>`; }
   };
+}
+
+// ============================================================
+// QUẢN LÝ NHÂN SỰ (Admin): danh sách + sửa + đổi mật khẩu + khóa/mở
+// ============================================================
+const _VT = { ADMIN: 'Quản trị', QLNS: 'QL Nhân sự', QLBH: 'QL Bảo hiểm', TRUONG_BP: 'Trưởng bộ phận', NHAN_VIEN: 'Thành viên', CTV: 'CTV' };
+
+async function formQuanLyNhanSu() {
+  const sh = openSheet(`<div class="sheet-grip"></div>
+    <h3>${ic('users')} Quản lý nhân sự</h3>
+    <input class="input" id="qlTim" placeholder="Tìm theo tên hoặc mã…">
+    <div id="qlDs" class="mt"><div class="skeleton" style="height:64px"></div></div>`);
+  let ds = [];
+  try { ds = await rpc('fn_admin_ds_nhan_su'); }
+  catch (e) { $('#qlDs', sh).innerHTML = `<p class="muted">${esc(loiNguoi(e))}</p>`; return; }
+
+  const ve = (loc = '') => {
+    const q = loc.trim().toLowerCase();
+    const list = ds.filter((n) => !q || n.ho_ten.toLowerCase().includes(q) || (n.username || '').includes(q) || n.ma_nv.toLowerCase().includes(q));
+    $('#qlDs', sh).innerHTML = list.length ? list.map((n) => `
+      <div class="ns-row" data-nv="${n.ma_nv}">
+        <div class="ns-main">
+          <div class="ns-ten">${esc(n.ho_ten)} ${n.trang_thai === 'TAM_KHOA' ? `<span class="badge badge-danger">khóa</span>` : ''}</div>
+          <div class="ns-sub mono">${esc(n.username || n.ma_nv)} · ${esc(_VT[n.vai_tro] || n.vai_tro)}${n.ten_phong_ban ? ' · ' + esc(n.ten_phong_ban) : ''}</div>
+        </div>
+        <button class="wl-edit" data-nv="${n.ma_nv}" aria-label="Sửa">${ic('edit', 'ic')}</button>
+      </div>`).join('') : '<p class="muted">Không có ai ạ.</p>';
+    $$('.wl-edit', $('#qlDs', sh)).forEach((b) => b.onclick = () => {
+      const n = ds.find((x) => x.ma_nv === b.dataset.nv);
+      if (n) formSuaNhanSu(n, async () => { ds = await rpc('fn_admin_ds_nhan_su'); ve($('#qlTim', sh).value); });
+    });
+  };
+  ve();
+  $('#qlTim', sh).oninput = (e) => ve(e.target.value);
+}
+
+async function formSuaNhanSu(n, onSaved) {
+  const pb = await _dsPhongBan();
+  const sh = openSheet(`<div class="sheet-grip"></div>
+    <h3>${ic('edit')} ${esc(n.ho_ten)}</h3>
+    <p class="muted mono" style="font-size:13px;margin-top:-4px">${esc(n.username || n.ma_nv)} · Mã ${esc(n.ma_nv)}</p>
+    <div class="field"><label>Họ tên</label><input class="input" id="suHt" value="${esc(n.ho_ten)}"></div>
+    <div class="field"><label>Chức vụ</label><input class="input" id="suCv" value="${esc(n.chuc_vu || '')}"></div>
+    <div class="field"><label>Số điện thoại</label><input class="input" id="suSdt" value="${esc(n.so_dien_thoai || '')}"></div>
+    <div class="row">
+      <div class="field" style="flex:1"><label>Vai trò</label>
+        <select class="input" id="suVt">
+          ${['NHAN_VIEN','TRUONG_BP','QLNS','QLBH','ADMIN','CTV'].map((v) => `<option value="${v}" ${n.vai_tro === v ? 'selected' : ''}>${_VT[v]}</option>`).join('')}
+        </select></div>
+      <div class="field" style="flex:1"><label>Phòng ban</label>
+        <select class="input" id="suPb"><option value="">— Không —</option>
+          ${pb.map((p) => `<option value="${p.ma_pb}" ${n.ma_phong_ban === p.ma_pb ? 'selected' : ''}>${esc(p.ten_pb)}</option>`).join('')}
+        </select></div>
+    </div>
+    <button class="btn btn-primary mt" id="suLuu">${ic('check')} Lưu thông tin</button>
+    <div class="row mt">
+      <button class="btn btn-quiet" id="suMk">${ic('key')} Đặt lại mật khẩu</button>
+      <button class="btn btn-quiet ${n.trang_thai === 'TAM_KHOA' ? '' : 'danger'}" id="suKhoa">${ic(n.trang_thai === 'TAM_KHOA' ? 'check' : 'x')} ${n.trang_thai === 'TAM_KHOA' ? 'Mở khóa' : 'Khóa TK'}</button>
+    </div>
+    <div id="suKq"></div>`);
+
+  $('#suLuu', sh).onclick = () => busy($('#suLuu', sh), async () => {
+    try {
+      await rpc('fn_admin_sua_nhan_su', { p_ma_nv: n.ma_nv, p_thay_doi: {
+        ho_ten: $('#suHt', sh).value.trim(), chuc_vu: $('#suCv', sh).value.trim(),
+        so_dien_thoai: $('#suSdt', sh).value.trim(), vai_tro: $('#suVt', sh).value,
+        ma_phong_ban: $('#suPb', sh).value,
+      }});
+      toast('Em đã cập nhật thông tin ạ.'); closeSheet(); onSaved?.();
+    } catch (e) { toast(loiNguoi(e), 'err'); }
+  });
+
+  $('#suMk', sh).onclick = () => busy($('#suMk', sh), async () => {
+    try {
+      const r = await rpc('fn_admin_dat_mat_khau', { p_ma_nv: n.ma_nv, p_mat_khau: null });
+      $('#suKq', sh).innerHTML = `<div class="pv-block mt"><b>${ic('key')} Mật khẩu mới:</b> <span class="mono">${esc(r.mat_khau)}</span><br><span class="muted" style="font-size:13px">Nhân viên đổi khi đăng nhập lần đầu. Gửi thông tin này cho họ ạ.</span></div>`;
+    } catch (e) { toast(loiNguoi(e), 'err'); }
+  });
+
+  $('#suKhoa', sh).onclick = () => busy($('#suKhoa', sh), async () => {
+    const moi = n.trang_thai === 'TAM_KHOA' ? 'HOAT_DONG' : 'TAM_KHOA';
+    try {
+      await rpc('fn_admin_khoa_mo', { p_ma_nv: n.ma_nv, p_trang_thai: moi });
+      toast(moi === 'TAM_KHOA' ? 'Đã khóa tài khoản ạ.' : 'Đã mở khóa ạ.'); closeSheet(); onSaved?.();
+    } catch (e) { toast(loiNguoi(e), 'err'); }
+  });
 }
 
 let _xlsx = null;
