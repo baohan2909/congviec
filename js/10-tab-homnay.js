@@ -84,13 +84,20 @@ function veCheckin(root) {
 
   const ten = (D.trang_thai_ds || []).find((t) => t.ma === c.loai)?.ten || c.loai;
   const gioBayGio = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
-  // Timeline nơi làm việc = các mục KẾ HOẠCH hôm nay CÓ ĐỊA ĐIỂM, sắp theo giờ
-  const moc = (D.ke_hoach || [])
-    .filter((k) => k.dia_diem)
-    .map((k) => ({ id: k.id, gio: fmtGio(k.thoi_gian), iso: k.thoi_gian, noi: k.dia_diem, tieu_de: k.tieu_de }))
-    .sort((a, b) => new Date(a.iso) - new Date(b.iso));
+  // Timeline nơi làm việc: MỐC ĐẦU = check-in gốc + các mục KẾ HOẠCH hôm nay CÓ ĐỊA ĐIỂM
+  const moc = [];
+  // mốc check-in (điểm bắt đầu ngày) — read-only
+  const gioCheckin = c.tao_luc
+    ? new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(c.tao_luc))
+    : '';
+  moc.push({ id: null, goc: true, gio: gioCheckin, iso: c.tao_luc || new Date().toISOString(),
+    noi: c.dia_diem || ten });
+  (D.ke_hoach || []).filter((k) => k.dia_diem).forEach((k) => moc.push({
+    id: k.id, goc: false, gio: fmtGio(k.thoi_gian), iso: k.thoi_gian, noi: k.dia_diem, tieu_de: k.tieu_de,
+  }));
+  moc.sort((a, b) => new Date(a.iso) - new Date(b.iso));
   const nowISO = new Date().toISOString();
-  const mocHienTai = moc.filter((m) => m.iso <= nowISO).pop();
+  const mocHienTai = moc.filter((m) => m.iso <= nowISO).pop() || moc[0];
   const noiHienTai = mocHienTai ? mocHienTai.noi : (c.dia_diem || ten);
 
   box.innerHTML = `
@@ -101,14 +108,13 @@ function veCheckin(root) {
       ${noiHienTai && noiHienTai !== ten ? `<span class="wn-place">${ic('pin')} ${esc(noiHienTai)}</span>` : ''}
       ${c.ghi_chu ? `<div class="muted" style="font-size:14px;width:100%">${esc(c.ghi_chu)}</div>` : ''}
     </div>
-    ${moc.length ? `
-      <hr class="hr"><ul class="wl-tl">
-        ${moc.map((m) => `<li class="wl-row ${m === mocHienTai ? 'wl-now' : ''}" data-id="${m.id}">
-          <span class="wl-time mono">${esc(m.gio)}</span>
-          <div class="wl-place">${esc(m.noi)}${m === mocHienTai ? ' <span class="badge badge-acc">hiện tại</span>' : ''}</div>
-          <button class="wl-edit" data-edit="${m.id}" aria-label="Sửa">${ic('edit', 'ic')}</button>
-        </li>`).join('')}
-      </ul>` : '<p class="muted" style="font-size:14px;margin:10px 0 0">Chưa có mốc nơi làm việc nào trong kế hoạch hôm nay ạ.</p>'}
+    <hr class="hr"><ul class="wl-tl">
+      ${moc.map((m) => `<li class="wl-row ${m === mocHienTai ? 'wl-now' : ''}">
+        <span class="wl-time mono">${esc(m.gio || '—')}</span>
+        <div class="wl-place">${esc(m.noi)}${m.goc ? ' <span class="badge badge-gold" style="font-size:10px">bắt đầu</span>' : ''}${m === mocHienTai ? ' <span class="badge badge-acc" style="font-size:10px">hiện tại</span>' : ''}</div>
+        ${m.goc ? '<span style="width:38px"></span>' : `<button class="wl-edit" data-edit="${m.id}" aria-label="Sửa">${ic('edit', 'ic')}</button>`}
+      </li>`).join('')}
+    </ul>
     <button class="btn btn-quiet btn-sm mt" id="ciThem" style="width:100%">${ic('plus')} Thêm nơi làm việc</button>`;
 
   // Đồng hồ giờ chạy (cập nhật mỗi 30s)

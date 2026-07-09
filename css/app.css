@@ -485,9 +485,9 @@ html[data-theme="dark"] .login-title {
 .face-ring-svg .fr-progress {
   fill: none; stroke: var(--acc); stroke-width: 5;
   stroke-linecap: round;
-  stroke-dasharray: 767; stroke-dashoffset: 767;
+  stroke-dasharray: 690 80; stroke-dashoffset: 0;
   filter: drop-shadow(0 0 6px var(--acc-glow));
-  transition: stroke-dashoffset .4s ease;
+  will-change: transform;   /* compositor → xoay mượt kể cả khi main thread bận warmup */
 }
 .face-video-wrap {
   position: absolute; inset: 18px;

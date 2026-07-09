@@ -5,7 +5,7 @@
 //   ③ app_settings.cache_version (SQL)
 // ============================================================
 export const SYS = {
-  version: '0.2.3',
+  version: '0.2.4',
   SUPA_URL: 'https://yfpapcepfbnuymfkrcqi.supabase.co',
   SUPA_ANON: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlmcGFwY2VwZmJudXltZmtyY3FpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0OTU2OTksImV4cCI6MjA5OTA3MTY5OX0.217nGrPBzVnfxHWWOimJCzVSReMCXwmBxS5Hvx2p0ZU',
   BUCKET: 'bao-cao',

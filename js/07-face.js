@@ -35,7 +35,7 @@ function napModel() {
     // để lần detect THẬT đầu tiên không cold-start làm khựng video.
     try {
       const cv = document.createElement('canvas'); cv.width = 320; cv.height = 320;
-      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 });
+      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
       await faceapi.detectSingleFace(cv, opts).withFaceLandmarks(true).withFaceDescriptor();
     } catch {}
     return faceapi;
@@ -86,6 +86,7 @@ export function tatCamera() {
 function taoOverlay() {
   const ov = document.createElement('div');
   ov.className = 'rec-overlay open';
+  ov.dataset.state = 'dang-tai';   // spinner mượt ngay từ frame đầu, không vẽ 1/4
   ov.innerHTML = `
     <div class="face-cage" role="img" aria-label="Camera nhận diện">
       <svg class="face-ring-svg" viewBox="0 0 260 260" aria-hidden="true">
@@ -110,7 +111,7 @@ function setState(ov, state, msg) {
 
 async function quetVongLap(video, ov, timeoutMs = 9000) {
   const api = faceapi;
-  const opts = new api.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 });
+  const opts = new api.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
   const t0 = Date.now();
   let khungBatDuoc = 0;
   while (Date.now() - t0 < timeoutMs) {
