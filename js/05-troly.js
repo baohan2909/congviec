@@ -21,7 +21,9 @@ export async function goiTroLy(text, mode = 'troly') {
   });
   if (!res.ok) {
     if (res.status === 401) throw new Error('PHIEN_HET_HAN');
-    throw new Error('AI_LOI');
+    let ct = '';
+    try { ct = (await res.json())?.chi_tiet || ''; } catch {}
+    throw new Error(ct ? `AI_LOI: ${ct}` : 'AI_LOI');
   }
   return res.json(); // { luot_id, text, tool_calls, ke_hoach_cho }
 }
