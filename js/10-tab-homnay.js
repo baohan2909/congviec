@@ -176,16 +176,24 @@ function formSuaNoi(m, root) {
 function formChonNoi(root) {
   const sh = openSheet(`
     <h3>${ic('pin')} Nơi làm việc hiện tại</h3>
-    <div class="status-grid">
+    <p class="muted mb0" style="font-size:14px">Chọn để đổi nơi làm việc chính, hoặc xóa chấm công hôm nay.</p>
+    <div class="status-grid mt">
       ${(D.trang_thai_ds || []).map((t) => `
         <button class="btn status-btn" data-loai="${t.ma}" data-can="${t.can_dia_diem}">
           ${ic(t.icon)} ${esc(t.ten)}
         </button>`).join('')}
-    </div>`);
+    </div>
+    <button class="btn btn-danger mt" id="cnXoa">${ic('x')} Xóa chấm công hôm nay</button>`);
   $$('.status-btn', sh).forEach((b) => b.onclick = () => {
     rung();
     if (b.dataset.can === 'true') { closeSheet(); hoiDiaDiem(b.dataset.loai, root); }
     else { closeSheet(); luuCheckin(b.dataset.loai, null, null, root); }
+  });
+  $('#cnXoa', sh).onclick = () => busy($('#cnXoa', sh), async () => {
+    try {
+      await rpc('fn_xoa_checkin', {});
+      closeSheet(); toast('Em đã xóa chấm công hôm nay ạ.'); renderHomNay(root);
+    } catch (e) { toast(loiNguoi(e), 'err'); }
   });
 }
 
@@ -277,16 +285,9 @@ function veKeHoach(root) {
           <div class="list-title">${esc(k.tieu_de)}</div>
           ${k.dia_diem ? `<div class="list-sub">${esc(k.dia_diem)}</div>` : ''}
         </div>
-        <button class="btn btn-sm btn-quiet" data-id="${k.id}">${ic('check')} Xong</button>
       </div>`).join('') + `
       <button class="btn btn-quiet mt" id="hnKhBtn">${ic('mic')} Lập thêm kế hoạch</button>`
     : `<p class="muted">${MC.chuaCoKeHoach}</p>
        <button class="btn btn-primary mt" id="hnKhBtn">${ic('mic')} Kế hoạch ngay</button>`}`;
   $('#hnKhBtn', box) && ($('#hnKhBtn', box).onclick = () => moGhiAm('troly', { onSaved: () => renderHomNay(root) }));
-  $$('button[data-id]', box).forEach((b) => b.onclick = () => busy(b, async () => {
-    try {
-      await rpc('fn_cap_nhat_ke_hoach', { p_id: Number(b.dataset.id), p_trang_thai: 'DA_THUC_HIEN' });
-      toast('Em đã đánh dấu hoàn thành ạ.'); renderHomNay(root);
-    } catch (e) { toast(loiNguoi(e), 'err'); }
-  }));
 }

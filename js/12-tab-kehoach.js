@@ -65,7 +65,7 @@ export async function renderKeHoach(root) {
     const ngay = seg === 'hom_nay' ? ngayHN
                 : new Date(Date.now() + 864e5).toISOString().slice(0, 10);
     const list = nhom[ngay] || [];
-    const listHT = list.filter((k) => k.trang_thai === 'CHO');
+    const listHT = list.filter((k) => k.trang_thai !== 'DA_HUY');
     const diNgay = seg === 'hom_nay' ? di : [];
 
     box.innerHTML = `
@@ -119,7 +119,6 @@ export async function renderKeHoach(root) {
     }
   }
 
-  $$('button[data-act]', box).forEach((b) => b.onclick = (e) => { e.stopPropagation(); hanhDong(b, reload); });
   $$('[data-open]', box).forEach((el) => el.onclick = () => {
     const k = ds.find((x) => String(x.id) === el.dataset.open);
     if (k) moChiTiet(k, reload);
@@ -131,21 +130,15 @@ export async function renderKeHoach(root) {
 
 // ---------- Item trong list ----------
 function veItem(k) {
-  const badge = {
-    CHO: '', DA_THUC_HIEN: `<span class="badge badge-acc">${ic('check')} Đã xong</span>`,
-    DA_HUY: `<span class="badge badge-warn">Đã hủy</span>`,
-  }[k.trang_thai] || '';
-  const qua = k.trang_thai === 'CHO' && new Date(k.thoi_gian) < new Date();
+  const qua = new Date(k.thoi_gian) < new Date();
   return `
     <div class="list-item" data-open="${k.id}" style="cursor:pointer">
       <span class="badge ${qua ? 'badge-danger' : 'badge-gold'} mono">${fmtGio(k.thoi_gian)}</span>
       <div class="list-main">
-        <div class="list-title" ${k.trang_thai !== 'CHO' ? 'style="opacity:.55;text-decoration:line-through"' : ''}>
-          ${esc(k.tieu_de)}</div>
-        <div class="list-sub">${k.dia_diem ? esc(k.dia_diem) + ' · ' : ''}nhắc trước ${k.nhac_truoc_phut}′ ${badge}</div>
+        <div class="list-title">${esc(k.tieu_de)}</div>
+        <div class="list-sub">${k.dia_diem ? esc(k.dia_diem) + ' · ' : ''}nhắc trước ${k.nhac_truoc_phut}′</div>
       </div>
-      ${k.trang_thai === 'CHO' ? `
-        <button class="btn btn-sm btn-quiet" data-act="xong" data-id="${k.id}" aria-label="Đánh dấu hoàn thành">${ic('check')}</button>` : ''}
+      ${ic('chevron', 'ic-xs')}
     </div>`;
 }
 
@@ -173,9 +166,9 @@ function veHourline(list, diChuyen, isToday) {
   // Gộp thành 1 danh sách mốc
   const moc = [
     ...list.map((k) => {
-      const late = k.trang_thai === 'CHO' && new Date(k.thoi_gian) < new Date();
+      const late = new Date(k.thoi_gian) < new Date();
       return { p: phut(k.thoi_gian), gio: hhmm(k.thoi_gian),
-        loai: k.trang_thai !== 'CHO' ? 'done' : (late ? 'late' : 'plan'),
+        loai: late ? 'late' : 'plan',
         ten: k.tieu_de, dia: k.dia_diem, id: k.id, icon: 'calendar' };
     }),
     ...diChuyen.map((d) => ({ p: phutStr(d.gio), gio: d.gio, loai: 'move',
@@ -238,25 +231,17 @@ function moChiTiet(k, reload) {
     <h3>${ic('calendar')} Chi tiết kế hoạch</h3>
     <div class="field"><label>Việc gì</label>
       <input class="input" id="ktTd" value="${esc(k.tieu_de)}"></div>
-    <div class="row">
-      <div class="field" style="flex:1.3"><label>Thời gian</label>
-        <input class="input" type="datetime-local" id="ktTg" value="${local()}"></div>
-      <div class="field" style="flex:1"><label>Nhắc trước</label>
+    <div class="field"><label>Thời gian</label>
+      <input class="input" type="datetime-local" id="ktTg" value="${local()}"></div>
+    <div class="field"><label>Nhắc trước</label>
         <select class="input" id="ktNh">
           ${[0, 15, 30, 60, 120].map((m) => `<option value="${m}" ${m === k.nhac_truoc_phut ? 'selected' : ''}>${m === 0 ? 'Đúng giờ' : m + ' phút'}</option>`).join('')}
         </select></div>
-    </div>
     <div class="field"><label>Địa điểm</label>
       <input class="input" id="ktDd" value="${esc(k.dia_diem || '')}"></div>
-    <div class="row">
-      ${k.trang_thai === 'CHO'
-        ? `<button class="btn btn-primary" id="ktXong">${ic('check')} Đã xong</button>
-           <button class="btn btn-quiet" id="ktLuu">${ic('edit')} Lưu sửa đổi</button>`
-        : `<button class="btn btn-primary" id="ktKhoi">${ic('undo')} Khôi phục</button>`}
-    </div>
-    ${k.trang_thai === 'CHO'
-      ? `<button class="btn btn-quiet mt" id="ktLich">${ic('bell')} Thêm vào Lịch (báo thức reo)</button>
-         <button class="btn btn-danger mt" id="ktHuy">${ic('x')} Hủy kế hoạch</button>` : ''}`);
+    <button class="btn btn-primary" id="ktLuu">${ic('edit')} Lưu sửa đổi</button>
+    <button class="btn btn-quiet mt" id="ktLich">${ic('bell')} Thêm vào Lịch (báo thức reo)</button>
+    <button class="btn btn-danger mt" id="ktHuy">${ic('x')} Xóa kế hoạch</button>`);
 
   const dong = () => { closeSheet(); reload(); };
 
@@ -282,12 +267,6 @@ function moChiTiet(k, reload) {
       toast('Em đã cập nhật kế hoạch ạ.'); dong();
     } catch (e) { toast(loiNguoi(e), 'err'); }
   }));
-  $('#ktXong', sh) && ($('#ktXong', sh).onclick = () => busy($('#ktXong', sh), async () => {
-    try {
-      await rpc('fn_sua_ke_hoach', { p_id: k.id, p_thay_doi: { trang_thai: 'DA_THUC_HIEN' } });
-      toast('Em đã đánh dấu hoàn thành ạ.'); dong();
-    } catch (e) { toast(loiNguoi(e), 'err'); }
-  }));
   $('#ktHuy', sh) && ($('#ktHuy', sh).onclick = () => {
     const sh2 = openSheet(`
       <h3>${ic('alert')} Hủy kế hoạch</h3>
@@ -303,20 +282,6 @@ function moChiTiet(k, reload) {
       } catch (e) { toast(loiNguoi(e), 'err'); }
     });
   });
-  $('#ktKhoi', sh) && ($('#ktKhoi', sh).onclick = () => busy($('#ktKhoi', sh), async () => {
-    try { await rpc('fn_sua_ke_hoach', { p_id: k.id, p_thay_doi: { trang_thai: 'CHO' } });
-      toast('Em đã khôi phục kế hoạch ạ.'); dong();
-    } catch (e) { toast(loiNguoi(e), 'err'); }
-  }));
-}
-
-function hanhDong(b, reload) {
-  return busy(b, async () => {
-    try {
-      await rpc('fn_sua_ke_hoach', { p_id: Number(b.dataset.id), p_thay_doi: { trang_thai: 'DA_THUC_HIEN' } });
-      toast('Em đã đánh dấu hoàn thành ạ.'); reload();
-    } catch (e) { toast(loiNguoi(e), 'err'); }
-  });
 }
 
 function formThem(reload) {
@@ -327,15 +292,13 @@ function formThem(reload) {
     <h3>${ic('calendar')} Thêm kế hoạch</h3>
     <div class="field"><label>Việc gì</label>
       <input class="input" id="fkTd" placeholder="Vd: Họp nhà cung cấp vải"></div>
-    <div class="row">
-      <div class="field" style="flex:1.3"><label>Thời gian</label>
-        <input class="input" type="datetime-local" id="fkTg" value="${mac}"></div>
-      <div class="field" style="flex:1"><label>Nhắc trước</label>
+    <div class="field"><label>Thời gian</label>
+      <input class="input" type="datetime-local" id="fkTg" value="${mac}"></div>
+    <div class="field"><label>Nhắc trước</label>
         <select class="input" id="fkNh">
           <option value="15">15 phút</option><option value="30" selected>30 phút</option>
           <option value="60">1 giờ</option><option value="120">2 giờ</option>
         </select></div>
-    </div>
     <div class="field"><label>Địa điểm</label><input class="input" id="fkDd"></div>
     <button class="btn btn-primary" id="fkOK">${ic('check')} Lưu kế hoạch</button>`);
   $('#fkOK', sh).onclick = () => busy($('#fkOK', sh), async () => {
