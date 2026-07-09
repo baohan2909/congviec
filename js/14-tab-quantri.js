@@ -103,21 +103,13 @@ async function veTongQuan(box) {
       <div class="hd-ngay"><h2 class="card-title mb0">${ic('pin')} Lịch trình Ban điều hành</h2>
         <span class="hd-date">Ngày ${homNayStr}</span></div>
       <div class="tag-count">
+        <span class="tagc on" data-f="all">Tất cả <b>${ns.length}</b></span>
         ${nhomCoNguoi.map((g) => `<span class="tagc" data-f="${g.key}">${ic(g.icon)} ${esc(g.tag)} <b>${g.ds.length}</b></span>`).join('')}
         ${chua.length ? `<span class="tagc miss" data-f="chua">${ic('alert')} Chưa cập nhật <b>${chua.length}</b></span>` : ''}
-        <span class="tagc on" data-f="all">Tất cả <b>${ns.length}</b></span>
       </div>
       <div id="tqNguoi" class="mt">
-        ${chua.length ? `
-          <div class="loc-group" data-grp="chua">
-            <div class="loc-head miss">${ic('alert')} Chưa cập nhật vị trí <span class="cnt">${chua.length}</span></div>
-            ${chua.map((n) => veNguoi(n)).join('')}
-          </div>` : ''}
-        ${nhomCoNguoi.map((g) => `
-          <div class="loc-group" data-grp="${g.key}">
-            <div class="loc-head">${ic(g.icon)} ${esc(g.ten)} <span class="cnt">${g.ds.length}</span></div>
-            ${g.ds.map((n) => veNguoi(n, g.key === 'CONG_TAC')).join('')}
-          </div>`).join('')}
+        ${chua.map((n) => `<div class="loc-row" data-grp="chua">${veNguoi(n)}</div>`).join('')}
+        ${nhomCoNguoi.map((g) => g.ds.map((n) => `<div class="loc-row" data-grp="${g.key}">${veNguoi(n, g.key === 'CONG_TAC')}</div>`).join('')).join('')}
       </div>
     </div>
 
@@ -155,7 +147,7 @@ async function veTongQuan(box) {
   $$('.tag-count .tagc', box).forEach((b) => b.onclick = () => {
     $$('.tag-count .tagc', box).forEach((x) => x.classList.toggle('on', x === b));
     const f = b.dataset.f;
-    $$('#tqNguoi .loc-group', box).forEach((g) => g.classList.toggle('hidden', f !== 'all' && g.dataset.grp !== f));
+    $$('#tqNguoi .loc-row', box).forEach((g) => g.classList.toggle('hidden', f !== 'all' && g.dataset.grp !== f));
   });
   // Bấm người → thông tin đầy đủ
   $$('.person-row[data-nv]', box).forEach((el) => el.onclick = () => {

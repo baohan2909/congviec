@@ -6,7 +6,7 @@
 // ============================================================
 import { rpc, phien, loiNguoi } from './01-supabase.js';
 import { $, $$, ic, esc, toast, openSheet, closeSheet, busy,
-         fmtNgay, fmtGio, homNayVN } from './03-ui.js';
+         fmtNgay, fmtGio, homNayVN, mdMini } from './03-ui.js';
 import { MC } from './00-config.js';
 import { moGhiAm } from './05-troly.js';
 
@@ -77,10 +77,27 @@ export async function renderKeHoach(root) {
       </div>
       ${(listHT.length + diNgay.length) > 0 ? `
         <div class="card mb0">
-          <h2 class="card-title">${ic('clock')} Lịch trong ngày</h2>
-          <p class="muted" style="font-size:13px;margin:-6px 0 4px">Trục thời gian giúp nhìn ra khoảng trống & lịch chồng lấn.</p>
-          ${veHourline(listHT, diNgay, seg === 'hom_nay')}
+          <div class="hd-ngay"><h2 class="card-title mb0">${ic('clock')} Lịch trong ngày</h2>
+            <div class="seg-mini" id="khView">
+              <button data-v="timeline" class="on">Timeline</button>
+              <button data-v="vanban">Văn bản</button>
+            </div>
+          </div>
+          <div id="khTimeline">
+            <p class="muted" style="font-size:13px;margin:2px 0 4px">Trục thời gian giúp nhìn ra khoảng trống & lịch chồng lấn.</p>
+            ${veHourline(listHT, diNgay, seg === 'hom_nay')}
+          </div>
+          <div id="khVanBan" style="display:none">
+            <div class="md-doc">${mdMini(keHoachSangVanBan(listHT, diNgay))}</div>
+          </div>
         </div>` : ''}`;
+    // Toggle Timeline / Văn bản
+    $$('#khView button', box).forEach((b) => b.onclick = () => {
+      $$('#khView button', box).forEach((x) => x.classList.toggle('on', x === b));
+      const vb = b.dataset.v === 'vanban';
+      $('#khTimeline', box).style.display = vb ? 'none' : '';
+      $('#khVanBan', box).style.display = vb ? '' : 'none';
+    });
   } else {
     if (!Object.keys(nhom).length) {
       box.innerHTML = `<div class="card mb0"><p class="muted mb0">${MC.chuaCoKeHoach}</p></div>`;
@@ -122,6 +139,16 @@ function veItem(k) {
       ${k.trang_thai === 'CHO' ? `
         <button class="btn btn-sm btn-quiet" data-act="xong" data-id="${k.id}" aria-label="Đánh dấu hoàn thành">${ic('check')}</button>` : ''}
     </div>`;
+}
+
+// ---------- Kế hoạch → BẢN VĂN BẢN gọn (1 cấp bullet theo giờ) ----------
+function keHoachSangVanBan(list, diChuyen = []) {
+  const muc = [];
+  list.forEach((k) => muc.push({ t: k.thoi_gian, s: `${fmtGio(k.thoi_gian)} ${k.tieu_de}${k.dia_diem ? ' · ' + k.dia_diem : ''}` }));
+  diChuyen.forEach((d) => muc.push({ t: d.thoi_gian || d.gio, s: `${d.gio ? fmtGio(d.gio) + ' ' : ''}Di chuyển: ${d.dia_diem || ''}`.trim() }));
+  muc.sort((a, b) => new Date(a.t) - new Date(b.t));
+  if (!muc.length) return '_Chưa có mục nào._';
+  return '**Kế hoạch trong ngày**\n' + muc.map((m) => `- ${m.s}`).join('\n');
 }
 
 // ---------- Timeline thông minh: chỉ hiện MỐC THỰC TẾ ----------
@@ -220,9 +247,20 @@ function moChiTiet(k, reload) {
         : `<button class="btn btn-primary" id="ktKhoi">${ic('undo')} Khôi phục</button>`}
     </div>
     ${k.trang_thai === 'CHO'
-      ? `<button class="btn btn-danger mt" id="ktHuy">${ic('x')} Hủy kế hoạch</button>` : ''}`);
+      ? `<button class="btn btn-quiet mt" id="ktLich">${ic('bell')} Thêm vào Lịch (báo thức reo)</button>
+         <button class="btn btn-danger mt" id="ktHuy">${ic('x')} Hủy kế hoạch</button>` : ''}`);
 
   const dong = () => { closeSheet(); reload(); };
+
+  $('#ktLich', sh) && ($('#ktLich', sh).onclick = () => {
+    taoICS({
+      tieu_de: $('#ktTd', sh).value.trim() || k.tieu_de,
+      thoi_gian: new Date($('#ktTg', sh).value || k.thoi_gian).toISOString(),
+      dia_diem: $('#ktDd', sh).value.trim() || k.dia_diem || '',
+      nhac_truoc_phut: Number($('#ktNh', sh).value ?? k.nhac_truoc_phut ?? 30),
+    });
+    toast('Em đã tạo file lịch — mở lên rồi bấm "Thêm vào Lịch" để iPhone reo đúng giờ ạ.', 'ok', 5200);
+  });
 
   $('#ktLuu', sh) && ($('#ktLuu', sh).onclick = () => busy($('#ktLuu', sh), async () => {
     const td = $('#ktTd', sh).value.trim(), tg = $('#ktTg', sh).value;
@@ -304,4 +342,30 @@ function formThem(reload) {
       closeSheet(); toast(MC.daLuuKeHoach); reload();
     } catch (e) { toast(loiNguoi(e), 'err'); }
   });
+}
+
+// ---------- Xuất file .ics để thêm vào Lịch iPhone (báo thức có âm) ----------
+function taoICS({ tieu_de, thoi_gian, dia_diem = '', nhac_truoc_phut = 30, mo_ta = '' }) {
+  const dt = (iso) => new Date(iso).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  const start = dt(thoi_gian);
+  const end = dt(new Date(new Date(thoi_gian).getTime() + 30 * 60000).toISOString());
+  const uid = 'cv-' + Date.now() + '@congviec';
+  const esc = (s) => String(s || '').replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n');
+  const ics = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Cong viec//NonSon//VI', 'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT', `UID:${uid}`, `DTSTAMP:${dt(new Date().toISOString())}`,
+    `DTSTART:${start}`, `DTEND:${end}`, `SUMMARY:${esc(tieu_de)}`,
+    dia_diem ? `LOCATION:${esc(dia_diem)}` : '',
+    mo_ta ? `DESCRIPTION:${esc(mo_ta)}` : '',
+    'BEGIN:VALARM', `TRIGGER:-PT${nhac_truoc_phut || 0}M`, 'ACTION:DISPLAY',
+    `DESCRIPTION:${esc(tieu_de)}`, 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR',
+  ].filter(Boolean).join('\r\n');
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = (tieu_de || 'nhac-viec').replace(/[^\p{L}\d]+/gu, '_').slice(0, 40) + '.ics';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
 }

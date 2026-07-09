@@ -89,6 +89,12 @@ export const fmtGio = (iso) =>
 export const fmtNgayGio = (iso) =>
   new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(iso));
 
+// Hôm nay → chỉ giờ; khác ngày → ngày + giờ
+export const gioThongMinh = (iso) => {
+  const d = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(iso));
+  return d === homNayVN() ? fmtGio(iso) : fmtNgayGio(iso);
+};
+
 // ---------- Toast ----------
 export function toast(msg, type = 'ok', ttl = 3200) {
   let wrap = $('.toast-wrap');

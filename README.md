@@ -106,6 +106,50 @@ supabase/  (KHÔNG nằm trong repo HTML, giữ trên máy anh làm tham chiếu
 
 ## NHẬT KÝ NỐI TIẾP
 
+### v0.2.0 — 09/07/2026 · Trợ lý mượt & bao quát · Trình bày tinh gọn · Sửa lỗi UX
+
+**SQL phải chạy:** `UPDATE_v0.2.0.sql` (thêm `fn_troly_toan_canh`, bump cache_version → 0.2.0).
+**Edge Function phải deploy lại:** `ai-gateway` (kèm fix `laQuanLy` + `chi_tiet` lỗi + tool `toan_canh` + prompt tinh gọn 2 nhóm phẳng).
+
+**① Trợ lý — tiến trình động (05-troly.js, app.css):**
+- Thay màn hình trống/skeleton bằng chỉ báo 3 bước động: đang nghe → đang hiểu → đang soạn, kèm orb nảy + echo lại câu vừa nói. Không còn cảm giác khựng.
+
+**② Báo cáo — composer gọn (11-tab-baocao.js):**
+- Bỏ nút "Nói" (lỗi không bấm được). Nút chính đổi thành **"Trợ lý — nói để báo cáo"**: bấm là ghi âm → nói → tự chuẩn hóa & gửi.
+- Gõ tay / thêm ảnh / gửi nguyên văn gom vào `<details>` phụ. Handler null-safe.
+- Bỏ chặn cứng khi còn kế hoạch chờ — cho gửi tự do.
+
+**③ Kế hoạch chờ phản hồi (03-ui.js, 11):**
+- Thêm `gioThongMinh()`: việc hôm nay chỉ hiện GIỜ (đưa lên trước), khác ngày mới hiện ngày+giờ.
+
+**④ Trợ lý hiểu ngữ cảnh, không cứng nhắc (ai-gateway, 05):**
+- Prompt `tao_bao_cao` viết lại: kể gì báo cáo nấy, không đòi đủ mục, không bịa "chưa làm". Bỏ ràng buộc `ke_hoach_thieu`.
+- Client bỏ chặn "phải chọn kết quả mọi kế hoạch mới cho gửi" — chỉ ghi nhận mục đã chọn.
+
+**⑤ Nhắc hẹn "thực sự reo" (12-tab-kehoach.js):**
+- iOS KHÔNG cho PWA tạo báo thức native. Giải pháp trung thực: nút **"Thêm vào Lịch (báo thức reo)"** xuất file `.ics` có VALARM → thêm vào app Lịch iPhone, Lịch tự reo đúng giờ kèm âm.
+
+**⑥ Quản trị — Lịch trình hết trùng (14-tab-quantri.js):**
+- Bỏ tiêu đề nhóm lặp lại tag đếm ("Xưởng bảo hiểm" 2 lần). Giờ là danh sách phẳng `.loc-row`, lọc bằng chip tag ("Tất cả" trước tiên).
+
+**⑦ Trợ lý bao quát toàn hệ thống (UPDATE_v0.2.0.sql, ai-gateway, 05):**
+- `fn_troly_toan_canh`: đếm nhân sự theo vị trí (bảo hiểm/công tác/văn phòng...), đã/chưa báo cáo, việc khẩn & ưu tiên, vấn đề phát sinh, việc trễ.
+- Tool `tra_cuu` thêm loại `toan_canh`. Hỏi "hôm nay bao nhiêu nhân sự", "báo cáo tình hình cả ngày", "có gì khẩn" → trả số liệu thật. Chỉ quản lý.
+
+**⑧ Trình bày tinh gọn — CHỈ 1 CẤP bullet (ai-gateway, mdMini):**
+- `tao_bao_cao` & `lap_ke_hoach_ngay`: chỉ 2 nhóm phẳng **Công việc thường xuyên** / **Công việc phát sinh**, mỗi việc 1 gạch đầu dòng. Bỏ đánh số I/II/III, bỏ đa cấp. Vấn đề thành dòng "- ⚠ …".
+
+**⑨ Kế hoạch — 2 dạng xem (12-tab-kehoach.js, app.css):**
+- Toggle **Timeline / Văn bản** cho lịch trong ngày. Văn bản = bản gọn 1 cấp bullet theo giờ (`keHoachSangVanBan`).
+
+**⑩ Chuyển tab lỗi "không tải được dữ liệu" (01-supabase.js):**
+- `rpc()` thêm retry 3 lần (0→500→1000ms) cho lỗi mạng tạm thời; lỗi nghiệp vụ vẫn báo ngay, `PHIEN_HET_HAN` vẫn reload.
+
+**Đề xuất tính năng (chờ anh duyệt):**
+- Hồ sơ nhân viên đầy đủ + nhắc sinh nhật; khóa/mở/đổi vai trò ngay trong danh sách thành viên; xuất Excel nhân sự + báo cáo tháng cho TGĐ; đăng nhập QR cho nhân viên lớn tuổi; nhật ký thao tác admin (audit log).
+
+---
+
 ### v0.1.9 — 09/07/2026 · Tạo tài khoản · Quản trị gọn · Composer báo cáo · Mặc định sáng
 
 **① Composer báo cáo:**

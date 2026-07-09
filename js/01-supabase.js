@@ -17,17 +17,29 @@ export const phien = {
 };
 
 // ---------- Gọi RPC có token ----------
+// Lỗi mạng tạm thời (không phải lỗi nghiệp vụ) → nên thử lại
+function _laLoiTamThoi(err) {
+  const m = String(err?.message || err || '').toLowerCase();
+  return !m || m.includes('fetch') || m.includes('network') || m.includes('timeout')
+    || m.includes('load failed') || m.includes('502') || m.includes('503') || m.includes('504');
+}
+
 export async function rpc(fn, args = {}, canToken = true) {
   const payload = canToken ? { p_token: phien.token(), ...args } : args;
-  const { data, error } = await sb.rpc(fn, payload);
-  if (error) {
+  let lastErr;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, attempt * 500)); // 0 → 500 → 1000ms
+    const { data, error } = await sb.rpc(fn, payload);
+    if (!error) return data;
     if (String(error.message).includes('PHIEN_HET_HAN')) {
       phien.clear();
       location.reload();
+      throw new Error(error.message);
     }
-    throw new Error(error.message);
+    lastErr = error;
+    if (!_laLoiTamThoi(error)) break; // lỗi nghiệp vụ → dừng ngay, không thử lại
   }
-  return data;
+  throw new Error(lastErr.message);
 }
 
 // ---------- Nén ảnh về WebP ≤1600px ----------

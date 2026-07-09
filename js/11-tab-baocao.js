@@ -2,7 +2,7 @@
 // CÔNG VIỆC — 11-tab-baocao.js
 // ============================================================
 import { rpc, phien, nenAnh, uploadAnh, anhURL, loiNguoi } from './01-supabase.js';
-import { $, $$, ic, esc, nl2html, mdMini, toast, openSheet, busy, fmtNgay, fmtGio, fmtNgayGio, homNayVN } from './03-ui.js';
+import { $, $$, ic, esc, nl2html, mdMini, toast, openSheet, busy, fmtNgay, fmtGio, fmtNgayGio, gioThongMinh, homNayVN } from './03-ui.js';
 import { MC } from './00-config.js';
 import { moGhiAm, xuLyVoiTroLy } from './05-troly.js';
 
@@ -34,15 +34,19 @@ export async function renderBaoCao(root) {
 
     <div class="card">
       <h2 class="card-title">${ic('file')} Báo cáo hôm nay</h2>
-      <textarea class="input" id="bcText"
-        placeholder="Anh/chị bấm mic để nói, hoặc gõ tự do tại đây…"></textarea>
-      <div class="photo-grid" id="bcPhotos"></div>
-      <div class="row mt">
-        <button class="btn btn-quiet" id="bcMic">${ic('mic')} Nói</button>
-        <button class="btn btn-quiet" id="bcCam">${ic('camera')} Ảnh</button>
-      </div>
-      <button class="btn btn-primary mt" id="bcAI">${ic('sparkle')} Nhờ trợ lý chuẩn hóa &amp; gửi</button>
-      <button class="btn btn-quiet mt" id="bcRaw">${ic('send')} Gửi nguyên văn</button>
+      <button class="btn btn-primary btn-troly" id="bcTroly">${ic('mic')} Trợ lý — nói để báo cáo</button>
+      <p class="muted" style="font-size:13px;margin:8px 0 0;text-align:center">Bấm rồi nói tự nhiên, em tự chuẩn hóa &amp; gửi giúp anh/chị ạ.</p>
+      <details class="bc-thu-cong mt">
+        <summary class="muted">Hoặc tự gõ / gửi kèm ảnh</summary>
+        <textarea class="input mt" id="bcText"
+          placeholder="Gõ tự do tại đây…"></textarea>
+        <div class="photo-grid" id="bcPhotos"></div>
+        <div class="row mt">
+          <button class="btn btn-quiet" id="bcCam">${ic('camera')} Thêm ảnh</button>
+          <button class="btn btn-quiet" id="bcAI">${ic('sparkle')} Chuẩn hóa &amp; gửi</button>
+        </div>
+        <button class="btn btn-quiet mt" id="bcRaw">${ic('send')} Gửi nguyên văn</button>
+      </details>
       <input type="file" id="bcFile" accept="image/*" multiple hidden>
     </div>
 
@@ -64,17 +68,21 @@ export async function renderBaoCao(root) {
     return out;
   };
 
-  $('#bcMic', root).onclick = () => {
+  $('#bcTroly', root).onclick = () => {
     const ctxHtml = khChoDs.length ? `
       <div class="rec-ctx-title">${ic('calendar')} Kế hoạch cần phản hồi (${khChoDs.length})</div>
       ${khChoDs.map((k, idx) => `<div class="rec-ctx-item">
         <b>${idx + 1}.</b> <span>${esc(k.tieu_de)}</span>
         <span class="mono">${fmtGio(k.thoi_gian)}</span>
       </div>`).join('')}` : '';
-    moGhiAm('baocao', { startText: $('#bcText', root).value, getAnh, onSaved: reload, contextHtml: ctxHtml });
+    // Nói xong → tự chuẩn hóa & gửi (mode 'baocao' đưa thẳng vào AI)
+    moGhiAm('baocao', {
+      startText: ($('#bcText', root)?.value || ''),
+      getAnh, onSaved: reload, contextHtml: ctxHtml,
+    });
   };
 
-  $('#bcCam', root).onclick = () => $('#bcFile', root).click();
+  $('#bcCam', root)?.addEventListener('click', () => $('#bcFile', root).click());
   $('#bcFile', root).onchange = async (e) => {
     for (const f of [...e.target.files].slice(0, 10 - photos.length)) {
       try {
@@ -86,19 +94,15 @@ export async function renderBaoCao(root) {
     vePhotos(root);
   };
 
-  $('#bcAI', root).onclick = () => {
-    const t = $('#bcText', root).value.trim();
-    if (!t) { toast('Anh/chị nói hoặc gõ nội dung trước ạ.', 'err'); return; }
+  $('#bcAI', root)?.addEventListener('click', () => {
+    const t = ($('#bcText', root)?.value || '').trim();
+    if (!t) { toast('Anh/chị gõ nội dung trước ạ.', 'err'); return; }
     xuLyVoiTroLy(t, 'baocao', { goc: t, getAnh, onSaved: reload });
-  };
+  });
 
   $('#bcRaw', root).onclick = () => busy($('#bcRaw', root), async () => {
-    const t = $('#bcText', root).value.trim();
+    const t = ($('#bcText', root)?.value || '').trim();
     if (!t) { toast('Nội dung báo cáo đang trống ạ.', 'err'); return; }
-    if (khChoCount > 0) {
-      toast(`Còn ${khChoCount} kế hoạch chờ phản hồi ạ. Anh/chị dùng nút "Nhờ trợ lý" để em đối chiếu từng mục nhé.`, 'err', 5200);
-      return;
-    }
     try {
       const anh = await getAnh();
       await rpc('fn_gui_bao_cao', {
@@ -123,7 +127,7 @@ async function veKeHoachCho(root) {
     card.style.display = '';
     $('#bcKhList', root).innerHTML = ds.map((k) => `
       <div class="list-item">
-        <span class="badge badge-gold mono">${fmtNgayGio(k.thoi_gian)}</span>
+        <span class="badge badge-gold mono">${gioThongMinh(k.thoi_gian)}</span>
         <div class="list-main">
           <div class="list-title">${esc(k.tieu_de)}</div>
           ${k.dia_diem ? `<div class="list-sub">${esc(k.dia_diem)}</div>` : ''}

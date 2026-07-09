@@ -718,3 +718,32 @@ html[data-theme="dark"] .login-title {
 .admin-btn { min-height: 48px; font-size: 14px; justify-content: flex-start; padding: 0 14px; }
 .admin-btn.danger { color: var(--danger); }
 @media (max-width: 380px) { .admin-grid { grid-template-columns: 1fr; } }
+
+/* ---------- TRỢ LÝ ĐANG XỬ LÝ (tiến trình động) ---------- */
+.troly-loading { padding: 8px 0 4px; }
+.tl-orb { display: flex; justify-content: center; gap: 8px; margin: 8px 0 18px; }
+.tl-orb span { width: 12px; height: 12px; border-radius: 50%; background: var(--acc);
+  animation: tlBounce 1.2s ease-in-out infinite; }
+.tl-orb span:nth-child(2) { animation-delay: .18s; background: var(--acc-2); }
+.tl-orb span:nth-child(3) { animation-delay: .36s; background: var(--gold); }
+@keyframes tlBounce { 0%,80%,100% { transform: scale(.5); opacity: .4; } 40% { transform: scale(1); opacity: 1; } }
+.tl-steps { display: flex; flex-direction: column; gap: 10px; }
+.tl-step { display: flex; align-items: center; gap: 10px; font-size: 15px;
+  color: var(--ink-3); opacity: .5; transition: all .35s ease; }
+.tl-step .ic { width: 20px; height: 20px; }
+.tl-step.on { opacity: 1; color: var(--ink); font-weight: 600; }
+.tl-step.on .ic { color: var(--acc); }
+.tl-echo { margin-top: 16px; padding: 10px 14px; font-size: 14px; font-style: italic;
+  color: var(--ink-2); background: var(--surface-2); border-radius: 10px;
+  border-left: 3px solid var(--acc-line); }
+
+/* Lịch trình: hàng phẳng, lọc bằng tag (không lặp tiêu đề nhóm) */
+.loc-row.hidden { display: none; }
+
+/* ---------- Toggle nhỏ Timeline/Văn bản ---------- */
+.seg-mini { display: inline-flex; background: var(--surface-2); border: 1px solid var(--line);
+  border-radius: 999px; padding: 3px; gap: 2px; }
+.seg-mini button { border: none; background: transparent; cursor: pointer;
+  font-size: 13px; font-weight: 600; color: var(--ink-2);
+  padding: 5px 14px; border-radius: 999px; transition: all .2s; }
+.seg-mini button.on { background: var(--surface); color: var(--acc-ink); box-shadow: var(--sh-1); }

@@ -149,9 +149,24 @@ export async function xuLyVoiTroLy(text, mode = 'troly', extra = {}) {
   const tenGoi = phien.nd().ten_goi;
   const sh = openSheet(`
     <h3>${ic('sparkle')} ${MC.troLyCua(tenGoi)}</h3>
-    <p class="muted">${MC.dangXuLy}</p>
-    <div class="skeleton" style="height:90px"></div>
-    <div class="skeleton mt" style="height:56px"></div>`);
+    <div class="troly-loading" id="tlLoad">
+      <div class="tl-orb"><span></span><span></span><span></span></div>
+      <div class="tl-steps">
+        <div class="tl-step on" data-s="0">${ic('mic')} <span>Đang nghe nội dung</span></div>
+        <div class="tl-step" data-s="1">${ic('sparkle')} <span>Đang hiểu ngữ cảnh</span></div>
+        <div class="tl-step" data-s="2">${ic('edit')} <span>Đang soạn giúp anh/chị</span></div>
+      </div>
+      <p class="tl-echo">"${esc(text.length > 90 ? text.slice(0, 90) + '…' : text)}"</p>
+    </div>`);
+
+  // Nhích các bước cho có cảm giác tiến trình (dừng ở bước 3, chờ AI trả về)
+  let _b = 0;
+  const _timer = setInterval(() => {
+    _b = Math.min(_b + 1, 2);
+    const steps = sh.querySelectorAll('.tl-step');
+    steps.forEach((el, i) => el.classList.toggle('on', i <= _b));
+  }, 1100);
+  const dungTien = () => clearInterval(_timer);
 
   // AN TOÀN GIỌNG NÓI: giữ lại đoạn vừa nói trước khi gọi AI
   const _luuId = luuTam(text, mode, extra.meta || {});
@@ -159,11 +174,13 @@ export async function xuLyVoiTroLy(text, mode = 'troly', extra = {}) {
   let data;
   try { data = await goiTroLy(text, mode); }
   catch (e) {
+    dungTien();
     danhDauLoi(_luuId); // giữ nguyên để khôi phục
     closeSheet();
     khoiPhucSau(text, mode, extra, loiNguoi(e));
     return;
   }
+  dungTien();
 
   const calls = data.tool_calls || [];
   const bcCall = calls.find((c) => c.name === 'tao_bao_cao');
@@ -292,20 +309,15 @@ export async function xuLyVoiTroLy(text, mode = 'troly', extra = {}) {
     const noiDung = $('#bcNoiDung', sh).value.trim();
     if (!noiDung) { toast('Nội dung báo cáo đang trống ạ.', 'err'); return; }
 
-    // Kế hoạch nào vẫn bỏ trống kết quả → chặn lại, đúng nghiệp vụ "không được bỏ sót"
+    // Không chặn: chỉ ghi nhận kế hoạch nào ĐÃ chọn kết quả; bỏ trống thì bỏ qua.
     const rows = $$('.kh-row', sh);
-    const boSot = rows.filter((r) => !$('.kh-tt', r).value);
-    if (boSot.length) {
-      boSot.forEach((r) => r.classList.add('thieu'));
-      toast(`Còn ${boSot.length} kế hoạch chưa chọn kết quả ạ. Chọn xong em gửi ngay.`, 'err', 4600);
-      boSot[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
-      return;
-    }
-    const keHoach = rows.map((r) => ({
-      id: Number(r.dataset.kh),
-      trang_thai: $('.kh-tt', r).value,
-      phan_hoi: $('.kh-ph', r).value.trim() || null,
-    }));
+    const keHoach = rows
+      .filter((r) => $('.kh-tt', r).value)
+      .map((r) => ({
+        id: Number(r.dataset.kh),
+        trang_thai: $('.kh-tt', r).value,
+        phan_hoi: $('.kh-ph', r).value.trim() || null,
+      }));
 
     try {
       let audio_path = null;
@@ -464,6 +476,39 @@ async function xemTraCuu(sh, input, dan) {
   sh.innerHTML = `<div class="sheet-grip"></div>
     <h3>${ic('sparkle')} ${MC.troLyCua(tenGoi)}</h3>
     <div class="skeleton" style="height:80px"></div>`;
+
+  // ---- TOÀN CẢNH: tổng hợp cả ngày ----
+  if (input.loai === 'toan_canh') {
+    let tc;
+    try { tc = await rpc('fn_troly_toan_canh', { p_ngay: null }); }
+    catch (e) { sh.innerHTML = `<div class="sheet-grip"></div><p>${esc(loiNguoi(e))}</p>`; return; }
+    if (tc?.loi === 'CAN_QUYEN_QUAN_LY') {
+      sh.innerHTML = `<div class="sheet-grip"></div><h3>${ic('sparkle')} ${MC.troLyCua(tenGoi)}</h3><p class="muted">Thông tin tổng hợp này chỉ dành cho Ban Quản lý ạ.</p>`;
+      return;
+    }
+    const TEN_VT = { VAN_PHONG: 'Văn phòng', XUONG_BH: 'Xưởng bảo hiểm', CONG_TAC: 'Công tác ngoài', LAM_O_NHA: 'Tại nhà', NGHI_PHEP: 'Nghỉ phép', CHUA_CHAM: 'Chưa cập nhật' };
+    const vt = tc.theo_vi_tri || {};
+    const dongVT = Object.keys(vt).sort((a, b) => (vt[b] - vt[a]))
+      .map((k) => `<li>${esc(TEN_VT[k] || k)}: <b>${vt[k]}</b> người</li>`).join('');
+    const khan = tc.viec_khan || [], vande = tc.van_de || [];
+    sh.innerHTML = `<div class="sheet-grip"></div>
+      <h3>${ic('sparkle')} Tình hình hôm nay</h3>
+      ${dan ? `<p class="muted">${esc(dan)}</p>` : ''}
+      <div class="stat-row">
+        <div class="stat"><b>${tc.tong_nhan_su}</b><span>Nhân sự</span></div>
+        <div class="stat"><b style="color:var(--acc-ink)">${tc.da_bao_cao}</b><span>Đã báo cáo</span></div>
+        <div class="stat"><b style="color:${tc.chua_bao_cao ? 'var(--danger)' : 'var(--ink)'}">${tc.chua_bao_cao}</b><span>Chưa BC</span></div>
+        <div class="stat"><b style="color:${tc.viec_tre ? 'var(--danger)' : 'var(--ink)'}">${tc.viec_tre}</b><span>Việc trễ</span></div>
+      </div>
+      <div class="pv-block"><b>${ic('pin')} Vị trí làm việc</b><ul class="md-ul mt">${dongVT || '<li>Chưa có ai chấm ạ.</li>'}</ul></div>
+      ${khan.length ? `<div class="pv-block"><b>${ic('alert')} Việc khẩn / ưu tiên (${khan.length})</b><ul class="md-ul mt">${khan.map((k) => `<li><b>${esc(k.tieu_de)}</b> — ${k.uu_tien === 'KHAN' ? 'KHẨN' : 'Ưu tiên cao'}${k.ten_nhan ? ' · ' + esc(k.ten_nhan) : ''}${k.han ? ` · hạn ${fmtNgayGio(k.han)}` : ''}</li>`).join('')}</ul></div>` : ''}
+      ${vande.length ? `<div class="pv-block"><b>${ic('alert')} Vấn đề phát sinh (${vande.length})</b><ul class="md-ul mt">${vande.map((v) => `<li><b>${esc(v.ho_ten)}</b>: ${esc(v.trich)}</li>`).join('')}</ul></div>` : ''}
+      ${!khan.length && !vande.length ? '<div class="pv-block">Không có việc khẩn hay vấn đề nào nổi cộm ạ. Mọi thứ đang trong tầm kiểm soát.</div>' : ''}
+      <button class="btn btn-quiet mt" id="tcDong">${ic('check')} Đóng</button>`;
+    $('#tcDong', sh) && ($('#tcDong', sh).onclick = () => closeSheet());
+    return;
+  }
+
   let r;
   try {
     r = await rpc('fn_troly_tra_cuu', {
