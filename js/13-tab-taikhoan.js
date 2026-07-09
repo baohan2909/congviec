@@ -172,7 +172,7 @@ async function formTaoTaiKhoan() {
         </select></div>
     </div>
     <div class="pv-block" style="font-size:13px">
-      ${ic('key')} Tên đăng nhập = họ tên viết liền không dấu · Mật khẩu mặc định <b>NS2396</b> (đổi khi đăng nhập lần đầu).
+      ${ic('key')} Tên đăng nhập = họ tên viết liền không dấu. Mật khẩu mặc định sẽ hiện sau khi tạo (nhân viên đổi khi đăng nhập lần đầu).
     </div>
     <button class="btn btn-primary mt" id="ttOK">${ic('check')} Tạo tài khoản</button>`);
 
@@ -252,7 +252,7 @@ async function formImportExcel() {
             ${ok.length ? `
               <div class="pv-block">
                 <b>${ic('key')} Tài khoản đã tạo — phát cho nhân viên:</b>
-                <p class="muted" style="font-size:13px;margin:6px 0">Mật khẩu chung <b class="mono">NS2396</b>, đổi khi đăng nhập lần đầu.</p>
+                <p class="muted" style="font-size:13px;margin:6px 0">Mật khẩu mặc định <b class="mono">${esc(ok[0]?.mat_khau || '')}</b>, đổi khi đăng nhập lần đầu.</p>
                 <div class="acc-list">
                   ${ok.map((x) => `<div class="acc-row">
                     <div class="acc-name">${esc(x.ho_ten)}</div>
@@ -265,7 +265,7 @@ async function formImportExcel() {
             <button class="btn btn-primary mt" id="imDong">${ic('check')} Xong</button>`;
           $('#imDong', box).onclick = closeSheet;
           $('#imCopy', box) && ($('#imCopy', box).onclick = async () => {
-            const txt = ok.map((x) => `${x.ho_ten}\t${x.username}\tNS2396`).join('\n');
+            const txt = ok.map((x) => `${x.ho_ten}\t${x.username}\t${x.mat_khau || ''}`).join('\n');
             try { await navigator.clipboard.writeText('Họ tên\tTên đăng nhập\tMật khẩu\n' + txt);
               toast('Đã sao chép danh sách tài khoản ạ.'); }
             catch { toast('Máy không cho sao chép tự động ạ.', 'err'); }

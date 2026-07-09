@@ -60,13 +60,13 @@ supabase/  (KHÔNG nằm trong repo HTML, giữ trên máy anh làm tham chiếu
 3. **Deploy Edge Function `ai-gateway`** — Edge Functions → Deploy a new function → tên đúng `ai-gateway` → dán nội dung `functions/ai-gateway/index.ts` → Deploy.
 4. **Thêm secrets** — Edge Functions → Secrets:
    - `ANTHROPIC_API_KEY` = `sk-ant-...`
-   - `CRON_SECRET` = `cv_a8f3e91d27b64c5f9a01d4e6b8c2f7a3`
-   - `VAPID_PUBLIC` = `BAKOctpIobn0_A0cm0zKj6dj3dPZAjYoWKklMgRBWPuKtQWkPSdY6Dx6pvzSydfpUN5und9cqAkda8sFHRWhlhw`
-   - `VAPID_PRIVATE` = `DBRrVhs7eSlISvtYAkllcDwv0Ze7sVOj3TovSfGUDHM`
+   - `CRON_SECRET` = `<giá trị bí mật — chỉ đặt trong Supabase Edge Function secrets, KHÔNG ghi ra file repo>`
+   - `VAPID_PUBLIC` = `<khóa công khai VAPID — lấy trong Supabase secrets>`
+   - `VAPID_PRIVATE` = `<KHÓA RIÊNG — chỉ đặt trong Supabase Edge Function secrets, TUYỆT ĐỐI không ghi ra file repo>`
 4b. **Deploy thêm 2 Edge Function**: `push-sender` và `daily-digest` (dán từ file kèm patch).
 5. **Cấu hình frontend** — điền `SUPA_URL` và `SUPA_ANON` (Settings → API) vào `js/00-config.js`.
 6. **Deploy repo** lên GitHub Pages.
-7. **Đăng nhập lần đầu** — `NS00490` / `Congviec@2026` → hệ thống bắt đổi mật khẩu.
+7. **Đăng nhập lần đầu** — `NS00490` / `<mật khẩu seed admin — xem trong Supabase, không lưu ở repo>` → hệ thống bắt đổi mật khẩu.
 
 ---
 
@@ -105,6 +105,32 @@ supabase/  (KHÔNG nằm trong repo HTML, giữ trên máy anh làm tham chiếu
 ---
 
 ## NHẬT KÝ NỐI TIẾP
+
+### v0.2.1 — 09/07/2026 · Phản hồi bấm · Vòng quét mượt · Nhập nhân sự · BẢO MẬT mật khẩu
+
+**SQL phải chạy:** `UPDATE_v0.2.1.sql` (đổi mật khẩu mặc định server-side, reset TK chưa đăng nhập, bump cache_version → 0.2.1). File này gộp luôn phần v0.2.0 (`fn_troly_toan_canh`) nên chạy 1 lần là đủ.
+
+**① Phản hồi bấm mọi nút (99-app.js, app.css, 02-auth, 13):**
+- Rung nhẹ tức thì khi chạm (haptic toàn cục) + hiệu ứng nhấn rõ hơn (scale .955 + tối nhẹ), tắt highlight xanh mặc định iOS.
+- Đăng xuất: có spinner ngay, không chờ server quá 700ms (trước đây retry mạng làm treo tới 1.5s).
+
+**② Vòng quét khuôn mặt mượt (app.css, 07-face.js):**
+- Bỏ animation cũ (vừa xoay 270° vừa co giãn cung → giật, lúc 3/4 lúc tí xíu) và bỏ cung 1/4 đứng yên ở trạng thái "sẵn sàng".
+- Giờ: MỘT cung ~28% xoay tròn đều 360° mượt như spinner iOS; thành công thì vòng **vẽ trọn 1 vòng mượt rồi dừng** + dấu tích; thất bại vòng đỏ đầy + rung.
+
+**③ Camera chỉ xin quyền một lần trong phiên (07-face.js):**
+- Giữ stream sống & tái dùng khi thử lại (không mở lại camera → không bị nhắc thêm); chỉ tắt hẳn khi đóng overlay. *Lưu ý: Safari iPhone chưa "Thêm vào màn hình chính" thì quyền camera bị reset mỗi lần — cách hết hẳn là cài PWA về home screen.*
+
+**④ Nhập nhân sự — hiện username để phát (13-tab-taikhoan.js, 02-auth.js, 03-ui.js):**
+- Trước đây nhập Excel xong chỉ đếm thành công/lỗi, KHÔNG hiện tên đăng nhập → không phát được cho nhân viên → họ không đăng nhập được. Nay hiện đầy đủ **họ tên · tên đăng nhập** từng người + nút "Sao chép danh sách".
+- Màn đăng nhập đổi nhãn "Mã NV hoặc tên đăng nhập" cho rõ (đăng nhập chấp nhận cả username lẫn mã NV).
+
+**⑤ BẢO MẬT — không hardcode mật khẩu/secret ở frontend (13, README, UPDATE_v0.2.1.sql):**
+- Gỡ toàn bộ chuỗi mật khẩu mặc định khỏi frontend (trước nằm 3 chỗ trong 13-tab-taikhoan.js). Mật khẩu mặc định CHỈ ở server (RPC), client hiển thị giá trị server trả về (`r.mat_khau`) — không chuỗi mật khẩu nào trong file HTML/JS.
+- Đổi mật khẩu mặc định (đặt trong `fn_admin_tao_tai_khoan`). `fn_admin_tao_tai_khoan_loat` trả kèm mật khẩu mỗi người. Reset về mật khẩu mới cho TK chưa đăng nhập lần đầu; ai đã đổi thì giữ nguyên.
+- Xóa mọi secret thật khỏi README (CRON_SECRET, VAPID_PRIVATE, mật khẩu seed admin) — thay bằng ghi chú "đặt trong Supabase secrets". Frontend chỉ còn anon key + VAPID public (khóa công khai hợp lệ).
+
+---
 
 ### v0.2.0 — 09/07/2026 · Trợ lý mượt & bao quát · Trình bày tinh gọn · Sửa lỗi UX
 
@@ -145,18 +171,8 @@ supabase/  (KHÔNG nằm trong repo HTML, giữ trên máy anh làm tham chiếu
 **⑩ Chuyển tab lỗi "không tải được dữ liệu" (01-supabase.js):**
 - `rpc()` thêm retry 3 lần (0→500→1000ms) cho lỗi mạng tạm thời; lỗi nghiệp vụ vẫn báo ngay, `PHIEN_HET_HAN` vẫn reload.
 
-**⑪ Phản hồi bấm & vòng quét khuôn mặt (02-auth, 13, 99-app, app.css, face):**
-- Mọi nút giờ có phản hồi tức thì: rung nhẹ khi chạm (haptic toàn cục) + hiệu ứng nhấn rõ hơn (scale .955 + tối nhẹ), tắt highlight xanh mặc định iOS.
-- Đăng xuất: có spinner ngay, không chờ server quá 700ms (trước đây retry mạng làm treo tới 1.5s) → thoát nhanh, mượt.
-- Vòng quét khuôn mặt: bỏ animation cũ (vừa xoay 270° vừa co giãn cung → giật, lúc hiện 3/4 lúc tí xíu). Thay bằng MỘT cung cố định (~28%) xoay tròn đều 360° mượt như spinner iOS; thành công thì vòng đầy trọn + check.
-
 **Đề xuất tính năng (chờ anh duyệt):**
 - Hồ sơ nhân viên đầy đủ + nhắc sinh nhật; khóa/mở/đổi vai trò ngay trong danh sách thành viên; xuất Excel nhân sự + báo cáo tháng cho TGĐ; đăng nhập QR cho nhân viên lớn tuổi; nhật ký thao tác admin (audit log).
-
-**⑫ Nhập nhân sự · camera · vòng quét (13, 02-auth, 03-ui, 07-face, app.css):**
-- **Đăng nhập nhân sự mới không được:** nguyên nhân là sau khi nhập Excel màn hình chỉ đếm thành công/lỗi, KHÔNG hiện username từng người → admin không biết phát tên đăng nhập nào. Nay hiện đầy đủ danh sách **họ tên · tên đăng nhập** (mật khẩu chung NS2396) + nút "Sao chép danh sách". Màn đăng nhập đổi nhãn thành "Mã NV hoặc tên đăng nhập".
-- **Camera hỏi lại nhiều lần:** giữ stream sống & tái dùng khi thử lại trong cùng phiên (không mở lại camera → không bị nhắc thêm); chỉ tắt hẳn khi đóng overlay. *Lưu ý: trên Safari iPhone chưa "Thêm vào màn hình chính", quyền camera bị Safari reset mỗi lần — cách hết hẳn là cài PWA về home screen.*
-- **Vòng quét:** bỏ cung 1/4 đứng yên ở trạng thái "sẵn sàng" (giờ xoay liền mạch từ đầu); khi nhận diện thành công vòng **vẽ trọn 1 vòng mượt rồi dừng** (không nhảy); thất bại thì vòng đỏ đầy + rung.
 
 ---
 
@@ -175,12 +191,12 @@ supabase/  (KHÔNG nằm trong repo HTML, giữ trên máy anh làm tham chiếu
 **③ Mặc định giao diện SÁNG** khi mở lần đầu (không theo hệ điều hành nữa) — ai cần mới tự chuyển tối.
 
 **④ Tài khoản admin — thêm khu vực Quản trị gọn (chỉ ADMIN thấy):**
-- **Tạo tài khoản**: nhập Họ tên, Ngày sinh, Chức vụ, SĐT, Vai trò, Phòng ban. Tên đăng nhập = **họ tên viết liền không dấu** (trùng thì thêm số), mật khẩu mặc định **NS2396**, buộc đổi lần đầu. Đăng nhập giờ chấp nhận **cả username lẫn mã NV**.
+- **Tạo tài khoản**: nhập Họ tên, Ngày sinh, Chức vụ, SĐT, Vai trò, Phòng ban. Tên đăng nhập = **họ tên viết liền không dấu** (trùng thì thêm số), mật khẩu mặc định (do server cấp), buộc đổi lần đầu. Đăng nhập giờ chấp nhận **cả username lẫn mã NV**.
 - **Nhập từ Excel**: tải file mẫu .xlsx, chọn file, đọc bằng SheetJS, xem trước số dòng rồi nhập hàng loạt (`fn_admin_tao_tai_khoan_loat`), báo rõ thành công/lỗi từng dòng.
 - **Xóa dữ liệu theo ngày**: chọn Báo cáo/Kế hoạch + ngày, có bước xác nhận (`fn_admin_xoa_theo_ngay`).
 
 **File thay đổi:** `js/04-voice.js`, `js/05-troly.js`, `js/11-tab-baocao.js`, `js/13-tab-taikhoan.js`, `js/14-tab-quantri.js`, `js/99-app.js`, `js/00-config.js`, `css/app.css`, `sw.js`, `README.md`.
-**SQL:** `UPDATE_v0.1.9.sql` (cột hồ sơ, tạo TK không dấu + mật khẩu NS2396, import loạt, xóa theo ngày, đăng nhập bằng username, nhãn Công tác ngoài, kế hoạch hôm nay BQT).
+**SQL:** `UPDATE_v0.1.9.sql` (cột hồ sơ, tạo TK không dấu + mật khẩu mặc định server-side, import loạt, xóa theo ngày, đăng nhập bằng username, nhãn Công tác ngoài, kế hoạch hôm nay BQT).
 **Edge Function:** không đổi (ai-gateway v6 vẫn dùng).
 **Kiểm chứng:** SQL 8/8 pass (tạo TK, username không dấu, trùng tên +số, đăng nhập username/mã NV, import loạt, xóa theo ngày, kế hoạch hôm nay, nhãn). JS pass syntax, RPC đối chiếu đủ. Composer/dashboard cần Aroma xem máy thật.
 
