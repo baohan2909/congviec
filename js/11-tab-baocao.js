@@ -8,6 +8,7 @@ import { moGhiAm, xuLyVoiTroLy } from './05-troly.js';
 
 let photos = []; // { blob, url }
 let khChoCount = 0;
+let khChoDs = [];
 
 export async function renderBaoCao(root) {
   root.innerHTML = `
@@ -63,8 +64,15 @@ export async function renderBaoCao(root) {
     return out;
   };
 
-  $('#bcMic', root).onclick = () =>
-    moGhiAm('baocao', { startText: $('#bcText', root).value, getAnh, onSaved: reload });
+  $('#bcMic', root).onclick = () => {
+    const ctxHtml = khChoDs.length ? `
+      <div class="rec-ctx-title">${ic('calendar')} Kế hoạch cần phản hồi (${khChoDs.length})</div>
+      ${khChoDs.map((k, idx) => `<div class="rec-ctx-item">
+        <b>${idx + 1}.</b> <span>${esc(k.tieu_de)}</span>
+        <span class="mono">${fmtGio(k.thoi_gian)}</span>
+      </div>`).join('')}` : '';
+    moGhiAm('baocao', { startText: $('#bcText', root).value, getAnh, onSaved: reload, contextHtml: ctxHtml });
+  };
 
   $('#bcCam', root).onclick = () => $('#bcFile', root).click();
   $('#bcFile', root).onchange = async (e) => {
@@ -110,6 +118,7 @@ async function veKeHoachCho(root) {
     const ds = await rpc('fn_ke_hoach_cho_phan_hoi');
     if (!ds?.length) return;
     khChoCount = ds.length;
+    khChoDs = ds;
     const card = $('#bcKeHoach', root);
     card.style.display = '';
     $('#bcKhList', root).innerHTML = ds.map((k) => `

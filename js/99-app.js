@@ -13,8 +13,7 @@ import { renderQuanTri } from './14-tab-quantri.js';
 import { kiemTraGiongNoiChoXuLy } from './05-troly.js';
 
 // ---------- Theme (sáng mặc định) ----------
-const theme = localStorage.getItem('cv_theme')
-  || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+const theme = localStorage.getItem('cv_theme') || 'light'; // mặc định SÁNG
 document.documentElement.dataset.theme = theme;
 document.querySelector('meta[name=theme-color]')
   ?.setAttribute('content', theme === 'dark' ? '#050B1F' : '#EEF3FA');

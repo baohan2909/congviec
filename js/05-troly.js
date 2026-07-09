@@ -340,6 +340,7 @@ function gắnUndo(sh, daLam) {
 // ============================================================
 export function moGhiAm(mode = 'troly', extra = {}) {
   openRecorder({
+    contextHtml: extra.contextHtml || '',
     startText: extra.startText || '',
     onDone: ({ action, text, audioBlob }) => {
       if (action === 'cancel') return;

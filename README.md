@@ -1,4 +1,4 @@
-# CÔNG VIỆC — v0.1.8
+# CÔNG VIỆC — v0.1.9
 
 **Hệ thống báo cáo & quản trị công việc** cho Ban Quản trị Nón Sơn.
 PWA thuần (không cần build) · GitHub Pages · Supabase Pro region Sydney · Claude API.
@@ -105,6 +105,39 @@ supabase/  (KHÔNG nằm trong repo HTML, giữ trên máy anh làm tham chiếu
 ---
 
 ## NHẬT KÝ NỐI TIẾP
+
+### v0.1.9 — 09/07/2026 · Tạo tài khoản · Quản trị gọn · Composer báo cáo · Mặc định sáng
+
+**① Composer báo cáo:**
+- Thư viện ảnh thu nhỏ (lưới 4 cột thay 3, gap nhỏ) — gọn hơn.
+- Bấm **Nói** khi đang ở tab Báo cáo: recorder hiện panel **kế hoạch cần phản hồi cuộn được ngay trên đầu** — vừa nói vừa nhìn từng mục để phản hồi đúng nội dung, không phải kéo xuống. (Thêm tham số `contextHtml` cho `openRecorder`.)
+
+**② Quản trị — bố cục lại theo yêu cầu:**
+- Đổi tên "Kế hoạch Ban điều hành" → **"Lịch trình Ban điều hành"** (đúng mục đích: thể hiện vị trí từng người). Mỗi người có **tag vị trí** (Văn phòng / Xưởng BH / Công tác ngoài / Tại nhà / Nghỉ phép); hàng **tag đếm** trên đầu cho biết ngay mỗi nơi bao nhiêu người, bấm để lọc.
+- "Công tác" đổi nhãn thành **"Công tác ngoài"** (ra ngoài phạm vi công ty).
+- **Kế hoạch hôm nay lên TRƯỚC báo cáo**; đây là kế hoạch công việc của Ban điều hành **hôm nay** (RPC `fn_bqt_ke_hoach_homnay`), KHÔNG phải 7 ngày tới. **Bỏ hẳn** mục "Kế hoạch toàn công ty 7 ngày tới".
+- Kế hoạch & Báo cáo đều nhóm **theo tên từng người**, việc nằm dưới tên. Mỗi card có **header ngày** (Ngày 09/07/2026) nhưng tiêu đề vẫn là "Hôm nay"; **bỏ ngày trong từng dòng** (đã có ở header).
+
+**③ Mặc định giao diện SÁNG** khi mở lần đầu (không theo hệ điều hành nữa) — ai cần mới tự chuyển tối.
+
+**④ Tài khoản admin — thêm khu vực Quản trị gọn (chỉ ADMIN thấy):**
+- **Tạo tài khoản**: nhập Họ tên, Ngày sinh, Chức vụ, SĐT, Vai trò, Phòng ban. Tên đăng nhập = **họ tên viết liền không dấu** (trùng thì thêm số), mật khẩu mặc định **NS2396**, buộc đổi lần đầu. Đăng nhập giờ chấp nhận **cả username lẫn mã NV**.
+- **Nhập từ Excel**: tải file mẫu .xlsx, chọn file, đọc bằng SheetJS, xem trước số dòng rồi nhập hàng loạt (`fn_admin_tao_tai_khoan_loat`), báo rõ thành công/lỗi từng dòng.
+- **Xóa dữ liệu theo ngày**: chọn Báo cáo/Kế hoạch + ngày, có bước xác nhận (`fn_admin_xoa_theo_ngay`).
+
+**File thay đổi:** `js/04-voice.js`, `js/05-troly.js`, `js/11-tab-baocao.js`, `js/13-tab-taikhoan.js`, `js/14-tab-quantri.js`, `js/99-app.js`, `js/00-config.js`, `css/app.css`, `sw.js`, `README.md`.
+**SQL:** `UPDATE_v0.1.9.sql` (cột hồ sơ, tạo TK không dấu + mật khẩu NS2396, import loạt, xóa theo ngày, đăng nhập bằng username, nhãn Công tác ngoài, kế hoạch hôm nay BQT).
+**Edge Function:** không đổi (ai-gateway v6 vẫn dùng).
+**Kiểm chứng:** SQL 8/8 pass (tạo TK, username không dấu, trùng tên +số, đăng nhập username/mã NV, import loạt, xóa theo ngày, kế hoạch hôm nay, nhãn). JS pass syntax, RPC đối chiếu đủ. Composer/dashboard cần Aroma xem máy thật.
+
+**Gợi ý phát triển thêm (chưa làm, chờ Aroma duyệt):**
+- Trang **hồ sơ nhân viên** đầy đủ (ngày sinh → nhắc sinh nhật, thâm niên).
+- **Khóa tạm / mở khóa / đổi vai trò** ngay trong danh sách thành viên.
+- **Xuất Excel**: danh sách nhân sự, báo cáo tổng hợp tháng để trình TGĐ.
+- **QR đăng nhập nhanh** cho thành viên lớn tuổi (quét là vào, khỏi gõ).
+- **Nhật ký quản trị** (ai tạo/xóa gì, khi nào) để minh bạch.
+
+---
 
 ### v0.1.8 — 08/07/2026 · Trợ lý làm thay toàn bộ nghiệp vụ công việc
 

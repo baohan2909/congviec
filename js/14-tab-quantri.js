@@ -47,18 +47,19 @@ async function veTongQuan(box) {
   const vanDe = (d.bao_cao_moi || []).filter((b) => b.co_van_de);
   const daBC = ns.filter((n) => n.da_bao_cao).length;
 
-  // Nhóm theo địa điểm thực tế Nón Sơn
+  // Nhóm theo địa điểm — tag hiển thị vị trí
   const nhom = [
-    { key: 'VAN_PHONG', ten: 'Văn phòng · Xưởng nón vải', icon: 'building' },
-    { key: 'XUONG_BH',  ten: 'Xưởng bảo hiểm',            icon: 'factory' },
-    { key: 'CONG_TAC',  ten: 'Công tác',                   icon: 'car' },
-    { key: 'LAM_O_NHA', ten: 'Làm việc tại nhà',           icon: 'home' },
-    { key: 'NGHI_PHEP', ten: 'Nghỉ phép',                  icon: 'leaf' },
+    { key: 'VAN_PHONG', ten: 'Văn phòng', tag: 'Văn phòng', icon: 'building' },
+    { key: 'XUONG_BH',  ten: 'Xưởng bảo hiểm', tag: 'Xưởng BH', icon: 'factory' },
+    { key: 'CONG_TAC',  ten: 'Công tác ngoài', tag: 'Công tác', icon: 'car' },
+    { key: 'LAM_O_NHA', ten: 'Làm việc tại nhà', tag: 'Tại nhà', icon: 'home' },
+    { key: 'NGHI_PHEP', ten: 'Nghỉ phép', tag: 'Nghỉ phép', icon: 'leaf' },
   ].map((g) => ({ ...g, ds: ns.filter((n) => n.loai === g.key) }));
   const chua = ns.filter((n) => !n.loai);
 
   const initials = (h) => esc(h.trim().split(/\s+/).map((w) => w[0]).slice(-2).join('').toUpperCase());
-  // Thẻ nhân sự GỌN — 1 dòng, bấm để xem đầy đủ
+  const tenTag = { VAN_PHONG: 'Văn phòng', XUONG_BH: 'Xưởng BH', CONG_TAC: 'Công tác ngoài', LAM_O_NHA: 'Tại nhà', NGHI_PHEP: 'Nghỉ phép' };
+  // Thẻ nhân sự GỌN — 1 dòng, có tag vị trí, bấm để xem đầy đủ
   const veNguoi = (n, congTac = false) => `
     <div class="person-row" data-nv="${n.ma_nv}">
       <div class="avatar sm">${initials(n.ho_ten)}</div>
@@ -68,13 +69,21 @@ async function veTongQuan(box) {
           congTac && n.dia_diem ? `${ic('pin')} ${esc(n.dia_diem)}` : esc(n.ten_pb || '—')
         }${n.di_chuyen?.length ? ` · ${n.di_chuyen.length} chặng` : ''}</div>
       </div>
+      ${n.loai ? `<span class="badge badge-acc" style="font-size:11px">${esc(tenTag[n.loai] || '')}</span>` : ''}
       <span class="dot-bc ${n.da_bao_cao ? 'ok' : 'no'}" title="${n.da_bao_cao ? 'Đã báo cáo' : 'Chưa báo cáo'}"></span>
     </div>`;
 
   let tomTat = [];
   try { tomTat = await rpc('fn_bqt_tong_hop'); } catch {}
+  let khHomNay = [];
+  try { khHomNay = await rpc('fn_bqt_ke_hoach_homnay'); } catch {}
 
   const nhomCoNguoi = nhom.filter((g) => g.ds.length);
+  const homNayStr = new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+
+  // Gom kế hoạch hôm nay theo người
+  const khTheoNguoi = {};
+  khHomNay.forEach((k) => { (khTheoNguoi[k.ma_nv] ||= { ho_ten: k.ho_ten, ds: [] }).ds.push(k); });
 
   box.innerHTML = `
     ${tomTat.length ? `
@@ -82,6 +91,7 @@ async function veTongQuan(box) {
         <h2 class="card-title">${ic('sparkle')} Tổng hợp AI — ${fmtNgay(tomTat[0].ngay)}</h2>
         <div class="md-doc">${mdMini(tomTat[0].noi_dung)}</div>
       </div>` : ''}
+
     <div class="stat-row">
       <div class="stat"><b>${ns.length}</b><span>Thành viên</span></div>
       <div class="stat"><b style="color:${chua.length ? 'var(--danger)' : 'var(--acc-ink)'}">${chua.length}</b><span>Chưa cập nhật</span></div>
@@ -90,13 +100,14 @@ async function veTongQuan(box) {
     </div>
 
     <div class="card">
-      <h2 class="card-title">${ic('users')} Kế hoạch Ban điều hành</h2>
-      <div class="seg" id="tqLoc">
-        <button data-f="all" class="on">Tất cả</button>
-        ${chua.length ? `<button data-f="chua">Chưa cập nhật (${chua.length})</button>` : ''}
-        ${nhomCoNguoi.map((g) => `<button data-f="${g.key}">${esc(g.ten.split(' · ')[0])} (${g.ds.length})</button>`).join('')}
+      <div class="hd-ngay"><h2 class="card-title mb0">${ic('pin')} Lịch trình Ban điều hành</h2>
+        <span class="hd-date">Ngày ${homNayStr}</span></div>
+      <div class="tag-count">
+        ${nhomCoNguoi.map((g) => `<span class="tagc" data-f="${g.key}">${ic(g.icon)} ${esc(g.tag)} <b>${g.ds.length}</b></span>`).join('')}
+        ${chua.length ? `<span class="tagc miss" data-f="chua">${ic('alert')} Chưa cập nhật <b>${chua.length}</b></span>` : ''}
+        <span class="tagc on" data-f="all">Tất cả <b>${ns.length}</b></span>
       </div>
-      <div id="tqNguoi">
+      <div id="tqNguoi" class="mt">
         ${chua.length ? `
           <div class="loc-group" data-grp="chua">
             <div class="loc-head miss">${ic('alert')} Chưa cập nhật vị trí <span class="cnt">${chua.length}</span></div>
@@ -111,37 +122,38 @@ async function veTongQuan(box) {
     </div>
 
     <div class="card">
-      <h2 class="card-title">${ic('file')} Báo cáo hôm nay (${(d.bao_cao_moi || []).length})</h2>
-      ${(d.bao_cao_moi || []).length
-        ? d.bao_cao_moi.map((b) => `
-          <div class="person-row" data-bc="${b.id}">
-            <div class="list-main">
-              <div class="list-title" style="font-size:14px">${esc(b.ho_ten)}
-                ${b.co_van_de ? `<span class="badge badge-danger">${ic('alert')} Vấn đề</span>` : ''}</div>
-              <div class="list-sub" style="font-size:12px">${fmtGio(b.gui_luc)} · ${esc(b.noi_dung.replace(/[*#]/g, '').slice(0, 56))}…</div>
-            </div>
-            ${b.so_anh > 0 ? `<span class="badge badge-gold">${ic('camera')} ${b.so_anh}</span>` : ''}
+      <div class="hd-ngay"><h2 class="card-title mb0">${ic('calendar')} Kế hoạch hôm nay</h2>
+        <span class="hd-date">Ngày ${homNayStr}</span></div>
+      ${Object.keys(khTheoNguoi).length
+        ? Object.values(khTheoNguoi).map((p) => `
+          <div class="grp-nguoi">
+            <div class="grp-ten">${ic('user')} ${esc(p.ho_ten)}</div>
+            ${p.ds.map((k) => `<div class="grp-viec">
+              <span class="badge badge-gold mono">${fmtGio(k.thoi_gian)}</span>
+              <span>${esc(k.tieu_de)}${k.dia_diem ? ' · ' + esc(k.dia_diem) : ''}</span>
+              ${k.trang_thai === 'DA_THUC_HIEN' ? `<span class="badge badge-acc">${ic('check')}</span>` : ''}
+            </div>`).join('')}
           </div>`).join('')
-        : '<p class="muted mb0">Chưa có báo cáo nào hôm nay ạ.</p>'}
+        : '<p class="muted mb0">Chưa có kế hoạch nào hôm nay ạ.</p>'}
     </div>
 
     <div class="card mb0">
-      <h2 class="card-title">${ic('calendar')} Kế hoạch toàn công ty — 7 ngày tới (${(d.ke_hoach_toi || []).length})</h2>
-      ${(d.ke_hoach_toi || []).length
-        ? d.ke_hoach_toi.map((k) => `
-          <div class="person-row">
-            <span class="badge badge-gold mono">${fmtNgayGio(k.thoi_gian)}</span>
-            <div class="list-main">
-              <div class="list-title" style="font-size:14px">${esc(k.tieu_de)}</div>
-              <div class="list-sub" style="font-size:12px">${esc(k.ho_ten)}${k.dia_diem ? ' · ' + esc(k.dia_diem) : ''}</div>
-            </div>
+      <div class="hd-ngay"><h2 class="card-title mb0">${ic('file')} Báo cáo hôm nay</h2>
+        <span class="hd-date">Ngày ${homNayStr}</span></div>
+      ${(d.bao_cao_moi || []).length
+        ? d.bao_cao_moi.map((b) => `
+          <div class="grp-nguoi" data-bc="${b.id}" style="cursor:pointer">
+            <div class="grp-ten">${ic('user')} ${esc(b.ho_ten)}
+              ${b.co_van_de ? `<span class="badge badge-danger">${ic('alert')} Vấn đề</span>` : ''}
+              ${b.so_anh > 0 ? `<span class="badge badge-gold">${ic('camera')} ${b.so_anh}</span>` : ''}</div>
+            <div class="grp-viec"><span class="muted">${fmtGio(b.gui_luc)} · ${esc(b.noi_dung.replace(/[*#]/g, '').slice(0, 80))}…</span></div>
           </div>`).join('')
-        : '<p class="muted mb0">Chưa có kế hoạch nào được đăng ký ạ.</p>'}
+        : '<p class="muted mb0">Chưa có báo cáo nào hôm nay ạ.</p>'}
     </div>`;
 
-  // Bộ lọc nhóm
-  $$('#tqLoc button', box).forEach((b) => b.onclick = () => {
-    $$('#tqLoc button', box).forEach((x) => x.classList.toggle('on', x === b));
+  // Bộ lọc bằng tag đếm
+  $$('.tag-count .tagc', box).forEach((b) => b.onclick = () => {
+    $$('.tag-count .tagc', box).forEach((x) => x.classList.toggle('on', x === b));
     const f = b.dataset.f;
     $$('#tqNguoi .loc-group', box).forEach((g) => g.classList.toggle('hidden', f !== 'all' && g.dataset.grp !== f));
   });
@@ -150,7 +162,7 @@ async function veTongQuan(box) {
     const n = ns.find((x) => x.ma_nv === el.dataset.nv);
     if (n) moChiTietNguoi(n);
   });
-  $$('.person-row[data-bc]', box).forEach((el) => el.onclick = () => moBaoCao(Number(el.dataset.bc)));
+  $$('.grp-nguoi[data-bc]', box).forEach((el) => el.onclick = () => moBaoCao(Number(el.dataset.bc)));
 }
 
 // Thông tin đầy đủ 1 thành viên (bấm từ dashboard)

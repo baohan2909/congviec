@@ -14,12 +14,13 @@ export const coGiongNoi = !!SR;
 
 let ctx = null;
 
-export function openRecorder({ startText = '', onDone }) {
+export function openRecorder({ startText = '', onDone, contextHtml = '' }) {
   // onDone({ action: 'send'|'pause'|'cancel', text, audioBlob })
   if (ctx) return;
   const ov = document.createElement('div');
-  ov.className = 'rec-overlay open';
+  ov.className = 'rec-overlay open' + (contextHtml ? ' has-ctx' : '');
   ov.innerHTML = `
+    ${contextHtml ? `<div class="rec-ctx">${contextHtml}</div>` : ''}
     <div class="rec-state"><span class="rec-dot"></span><span id="recTime">00:00</span></div>
     <canvas class="rec-wave" id="recWave" width="840" height="220"></canvas>
     <p class="rec-hint">${MC.dangNghe}</p>
