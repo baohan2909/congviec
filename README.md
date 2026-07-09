@@ -153,6 +153,11 @@ supabase/  (KHÔNG nằm trong repo HTML, giữ trên máy anh làm tham chiếu
 **Đề xuất tính năng (chờ anh duyệt):**
 - Hồ sơ nhân viên đầy đủ + nhắc sinh nhật; khóa/mở/đổi vai trò ngay trong danh sách thành viên; xuất Excel nhân sự + báo cáo tháng cho TGĐ; đăng nhập QR cho nhân viên lớn tuổi; nhật ký thao tác admin (audit log).
 
+**⑫ Nhập nhân sự · camera · vòng quét (13, 02-auth, 03-ui, 07-face, app.css):**
+- **Đăng nhập nhân sự mới không được:** nguyên nhân là sau khi nhập Excel màn hình chỉ đếm thành công/lỗi, KHÔNG hiện username từng người → admin không biết phát tên đăng nhập nào. Nay hiện đầy đủ danh sách **họ tên · tên đăng nhập** (mật khẩu chung NS2396) + nút "Sao chép danh sách". Màn đăng nhập đổi nhãn thành "Mã NV hoặc tên đăng nhập".
+- **Camera hỏi lại nhiều lần:** giữ stream sống & tái dùng khi thử lại trong cùng phiên (không mở lại camera → không bị nhắc thêm); chỉ tắt hẳn khi đóng overlay. *Lưu ý: trên Safari iPhone chưa "Thêm vào màn hình chính", quyền camera bị Safari reset mỗi lần — cách hết hẳn là cài PWA về home screen.*
+- **Vòng quét:** bỏ cung 1/4 đứng yên ở trạng thái "sẵn sàng" (giờ xoay liền mạch từ đầu); khi nhận diện thành công vòng **vẽ trọn 1 vòng mượt rồi dừng** (không nhảy); thất bại thì vòng đỏ đầy + rung.
+
 ---
 
 ### v0.1.9 — 09/07/2026 · Tạo tài khoản · Quản trị gọn · Composer báo cáo · Mặc định sáng

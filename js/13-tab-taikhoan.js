@@ -249,9 +249,27 @@ async function formImportExcel() {
               <div class="kv"><span>Thành công</span><b style="color:var(--acc-ink)">${ok.length}</b></div>
               <div class="kv"><span>Lỗi</span><b style="color:${loi.length ? 'var(--danger)' : 'var(--ink)'}">${loi.length}</b></div>
             </div>
+            ${ok.length ? `
+              <div class="pv-block">
+                <b>${ic('key')} Tài khoản đã tạo — phát cho nhân viên:</b>
+                <p class="muted" style="font-size:13px;margin:6px 0">Mật khẩu chung <b class="mono">NS2396</b>, đổi khi đăng nhập lần đầu.</p>
+                <div class="acc-list">
+                  ${ok.map((x) => `<div class="acc-row">
+                    <div class="acc-name">${esc(x.ho_ten)}</div>
+                    <div class="acc-user mono">${esc(x.username)}</div>
+                  </div>`).join('')}
+                </div>
+                <button class="btn btn-quiet mt" id="imCopy">${ic('copy')} Sao chép danh sách</button>
+              </div>` : ''}
             ${loi.length ? `<div class="pv-block"><b>Dòng lỗi:</b><br>${loi.map((x) => `${esc(x.ho_ten)}: ${esc(x.loi)}`).join('<br>')}</div>` : ''}
             <button class="btn btn-primary mt" id="imDong">${ic('check')} Xong</button>`;
           $('#imDong', box).onclick = closeSheet;
+          $('#imCopy', box) && ($('#imCopy', box).onclick = async () => {
+            const txt = ok.map((x) => `${x.ho_ten}\t${x.username}\tNS2396`).join('\n');
+            try { await navigator.clipboard.writeText('Họ tên\tTên đăng nhập\tMật khẩu\n' + txt);
+              toast('Đã sao chép danh sách tài khoản ạ.'); }
+            catch { toast('Máy không cho sao chép tự động ạ.', 'err'); }
+          });
         } catch (e) { toast(loiNguoi(e), 'err'); }
       });
     } catch (err) { box.innerHTML = `<p class="muted mt">Không đọc được file ạ: ${esc(String(err.message || err))}</p>`; }

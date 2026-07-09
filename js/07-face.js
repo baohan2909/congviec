@@ -38,7 +38,15 @@ function napModel() {
 
 export function preloadFaceModel() { napModel().catch(() => {}); }
 
+let _stream = null;
+
 async function moCamera(video) {
+  // Tái dùng stream còn sống → không mở lại camera, không bị nhắc quyền lần nữa
+  if (_stream && _stream.getVideoTracks().some((t) => t.readyState === 'live')) {
+    video.srcObject = _stream;
+    await video.play().catch(() => {});
+    return _stream;
+  }
   const stream = await navigator.mediaDevices.getUserMedia({
     audio: false,
     video: {
@@ -49,6 +57,7 @@ async function moCamera(video) {
       frameRate: { ideal: 24 },
     },
   });
+  _stream = stream;
   const track = stream.getVideoTracks()[0];
   try {
     const cap = track.getCapabilities?.();
@@ -60,6 +69,11 @@ async function moCamera(video) {
   await new Promise((r) => (video.onloadedmetadata = r));
   await video.play().catch(() => {});
   return stream;
+}
+
+// Tắt camera hẳn (chỉ gọi khi đóng overlay hoàn toàn)
+export function tatCamera() {
+  if (_stream) { _stream.getTracks().forEach((t) => t.stop()); _stream = null; }
 }
 
 function taoOverlay() {
@@ -115,14 +129,14 @@ async function chayLuong(ov, timeoutMs) {
   await napModel();
   setState(ov, 'san-sang', MC.faceDangQuet);
   const video = $('#fvVideo', ov);
-  const stream = await moCamera(video);
+  await moCamera(video);
   try {
     await new Promise((r) => setTimeout(r, 250));
     setState(ov, 'dang-tim', 'Đang tìm khuôn mặt…');
     return await quetVongLap(video, ov, timeoutMs);
   } finally {
-    stream.getTracks().forEach((t) => t.stop());
-    video.srcObject = null;
+    // Giữ camera sống để lần thử lại không phải xin quyền nữa; chỉ ngắt hiển thị.
+    if (video) video.srcObject = null;
   }
 }
 
@@ -132,6 +146,7 @@ async function dongOverlay(ov, delay = 0) {
   ov.classList.add('closing');
   await new Promise((r) => setTimeout(r, delay + 220));
   ov.remove();
+  tatCamera();
 }
 
 export async function dangKyKhuonMat() {

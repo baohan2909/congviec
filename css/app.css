@@ -509,8 +509,9 @@ html[data-theme="dark"] .login-title {
   filter: drop-shadow(0 0 20px var(--acc)); }
 
 /* ---- STATE MACHINE ---- */
-/* dang-tai & dang-tim: MỘT cung cố định xoay tròn đều, mượt như spinner iOS */
+/* dang-tai / san-sang / dang-tim: MỘT cung cố định xoay tròn đều, mượt như spinner iOS */
 .rec-overlay[data-state="dang-tai"] .fr-progress,
+.rec-overlay[data-state="san-sang"] .fr-progress,
 .rec-overlay[data-state="dang-tim"] .fr-progress {
   stroke-dasharray: 215 552;   /* cung ~28% chu vi */
   stroke-dashoffset: 0;
@@ -520,31 +521,30 @@ html[data-theme="dark"] .login-title {
   animation: frSweep .85s linear infinite;
 }
 @keyframes frSweep { to { transform: rotate(360deg); } }
-/* svg đứng yên ở -90°, chỉ cung bên trong xoay */
 .rec-overlay[data-state="dang-tai"] .face-ring-svg,
+.rec-overlay[data-state="san-sang"] .face-ring-svg,
 .rec-overlay[data-state="dang-tim"] .face-ring-svg {
   transform: rotate(-90deg); animation: none;
 }
 
-/* san-sang: cung đứng yên ở ~28%, sáng aurora */
-.rec-overlay[data-state="san-sang"] .fr-progress {
-  stroke-dasharray: 215 552; stroke-dashoffset: 0;
-  transition: stroke .3s ease;
-}
-
-/* thanh-cong: ring đầy + check hiện */
+/* thanh-cong: DỪNG xoay, vẽ trọn vòng mượt từ rỗng → đầy rồi dừng + check */
 .rec-overlay[data-state="thanh-cong"] .fr-progress {
-  stroke-dashoffset: 0;
   stroke: var(--acc-2);
-  animation: none;
+  stroke-dasharray: 767;
+  transform: none; transition: none;
+  animation: frFill .6s cubic-bezier(.4,0,.2,1) forwards;
 }
+@keyframes frFill { from { stroke-dashoffset: 767; } to { stroke-dashoffset: 0; } }
+
+/* thanh-cong: làm mờ video + hiện dấu tích */
 .rec-overlay[data-state="thanh-cong"] .face-video-wrap video { opacity: .35; }
 .rec-overlay[data-state="thanh-cong"] .face-check { opacity: 1; transform: scale(1); }
 
-/* that-bai: ring đỏ */
+/* that-bai: DỪNG xoay, vòng đỏ đầy + rung nhẹ */
 .rec-overlay[data-state="that-bai"] .fr-progress {
   stroke: var(--danger);
-  stroke-dashoffset: 0;
+  stroke-dasharray: 767; stroke-dashoffset: 0;
+  transform: none; transition: none;
   animation: frShake .5s ease;
 }
 @keyframes frShake {
@@ -749,3 +749,11 @@ html[data-theme="dark"] .login-title {
   font-size: 13px; font-weight: 600; color: var(--ink-2);
   padding: 5px 14px; border-radius: 999px; transition: all .2s; }
 .seg-mini button.on { background: var(--surface); color: var(--acc-ink); box-shadow: var(--sh-1); }
+
+/* Danh sách tài khoản sau khi nhập Excel */
+.acc-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px;
+  max-height: 320px; overflow-y: auto; }
+.acc-row { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+  padding: 8px 12px; background: var(--surface-2); border-radius: 8px; }
+.acc-name { font-size: 14px; }
+.acc-user { font-size: 14px; font-weight: 700; color: var(--acc-ink); }

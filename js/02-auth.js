@@ -23,10 +23,10 @@ export function renderLogin(onOK) {
             </div>
           </div>
           <form id="lgForm" autocomplete="on" novalidate>
-            <div class="field"><label for="lgMa">Mã nhân viên</label>
+            <div class="field"><label for="lgMa">Mã NV hoặc tên đăng nhập</label>
               <input class="input mono" id="lgMa" name="username" type="text"
                      autocomplete="username" autocapitalize="characters"
-                     autocorrect="off" spellcheck="false" placeholder="NS00xxx"></div>
+                     autocorrect="off" spellcheck="false" placeholder="NS00xxx hoặc tên viết liền"></div>
             <div class="field"><label for="lgMk">Mật khẩu</label>
               <div class="pw-wrap">
                 <input class="input" id="lgMk" name="password" type="password"
