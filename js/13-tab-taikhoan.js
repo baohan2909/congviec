@@ -133,7 +133,7 @@ export function renderTaiKhoan(root) {
         <button class="btn btn-danger" id="outYes">${ic('out')} Đăng xuất</button>
       </div>`);
     $('#outNo', sh).onclick = closeSheet;
-    $('#outYes', sh).onclick = dangXuat;
+    $('#outYes', sh).onclick = () => busy($('#outYes', sh), dangXuat);
   };
 }
 

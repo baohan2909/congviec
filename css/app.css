@@ -167,10 +167,13 @@ svg.ic { width: 22px; height: 22px; stroke: currentColor; fill: none;
   min-height: 56px; padding: 0 22px; border-radius: var(--r);
   border: 1px solid var(--line-2); background: var(--surface);
   font-size: 17px; font-weight: 600; cursor: pointer;
-  transition: transform .12s ease, filter .12s ease;
+  transition: transform .08s ease, filter .08s ease, opacity .08s ease;
   width: 100%;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation; user-select: none;
 }
-.btn:active { transform: scale(.98); }
+.btn:active { transform: scale(.955); filter: brightness(.94); }
+.btn:disabled { opacity: .6; cursor: default; }
 .btn-primary {
   background: var(--acc-grad); color: var(--acc-on); border: none;
   box-shadow: 0 10px 24px var(--acc-glow), inset 0 1px 0 rgba(255,255,255,.28);
@@ -506,29 +509,28 @@ html[data-theme="dark"] .login-title {
   filter: drop-shadow(0 0 20px var(--acc)); }
 
 /* ---- STATE MACHINE ---- */
-/* dang-tai: progress quay vòng vô định */
-.rec-overlay[data-state="dang-tai"] .fr-progress {
-  animation: frSpin 1.4s ease-in-out infinite;
-}
-@keyframes frSpin {
-  0%   { stroke-dashoffset: 690; transform: rotate(0deg); }
-  50%  { stroke-dashoffset: 380; }
-  100% { stroke-dashoffset: 690; transform: rotate(360deg); }
-}
-.rec-overlay[data-state="dang-tai"] .face-ring-svg { transform: rotate(-90deg); animation: frRotate 2s linear infinite; }
-@keyframes frRotate { to { transform: rotate(270deg); } }
-
-/* san-sang: ring hoàn thành nhẹ, sáng aurora */
-.rec-overlay[data-state="san-sang"] .fr-progress {
-  stroke-dashoffset: 190; /* ~ 75% */
-}
-
-/* dang-tim: ring nhấp nháy chậm */
+/* dang-tai & dang-tim: MỘT cung cố định xoay tròn đều, mượt như spinner iOS */
+.rec-overlay[data-state="dang-tai"] .fr-progress,
 .rec-overlay[data-state="dang-tim"] .fr-progress {
-  stroke-dashoffset: 100;
-  animation: frBreathe 2.2s ease-in-out infinite;
+  stroke-dasharray: 215 552;   /* cung ~28% chu vi */
+  stroke-dashoffset: 0;
+  transition: none;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: frSweep .85s linear infinite;
 }
-@keyframes frBreathe { 50% { opacity: .55; } }
+@keyframes frSweep { to { transform: rotate(360deg); } }
+/* svg đứng yên ở -90°, chỉ cung bên trong xoay */
+.rec-overlay[data-state="dang-tai"] .face-ring-svg,
+.rec-overlay[data-state="dang-tim"] .face-ring-svg {
+  transform: rotate(-90deg); animation: none;
+}
+
+/* san-sang: cung đứng yên ở ~28%, sáng aurora */
+.rec-overlay[data-state="san-sang"] .fr-progress {
+  stroke-dasharray: 215 552; stroke-dashoffset: 0;
+  transition: stroke .3s ease;
+}
 
 /* thanh-cong: ring đầy + check hiện */
 .rec-overlay[data-state="thanh-cong"] .fr-progress {

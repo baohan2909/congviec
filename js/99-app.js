@@ -18,6 +18,12 @@ document.documentElement.dataset.theme = theme;
 document.querySelector('meta[name=theme-color]')
   ?.setAttribute('content', theme === 'dark' ? '#050B1F' : '#EEF3FA');
 
+// ---------- Phản hồi bấm: rung nhẹ tức thì cho mọi nút ----------
+addEventListener('pointerdown', (e) => {
+  const b = e.target.closest?.('.btn, .tabbar-item, .seg button, .seg-mini button, .tagc, .chip');
+  if (b && !b.disabled) rung(9);
+}, { passive: true });
+
 // ---------- Service worker ----------
 if ('serviceWorker' in navigator) {
   addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));

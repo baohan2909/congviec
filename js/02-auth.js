@@ -127,7 +127,11 @@ function doiMatKhauLanDau(onOK) {
 }
 
 export async function dangXuat() {
-  try { await rpc('fn_dang_xuat'); } catch {}
+  // Phản hồi ngay — không để server làm chậm. Báo server tối đa 700ms rồi thoát.
+  await Promise.race([
+    rpc('fn_dang_xuat').catch(() => {}),
+    new Promise((r) => setTimeout(r, 700)),
+  ]);
   phien.clear();
   location.reload();
 }

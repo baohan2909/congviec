@@ -145,6 +145,11 @@ supabase/  (KHÔNG nằm trong repo HTML, giữ trên máy anh làm tham chiếu
 **⑩ Chuyển tab lỗi "không tải được dữ liệu" (01-supabase.js):**
 - `rpc()` thêm retry 3 lần (0→500→1000ms) cho lỗi mạng tạm thời; lỗi nghiệp vụ vẫn báo ngay, `PHIEN_HET_HAN` vẫn reload.
 
+**⑪ Phản hồi bấm & vòng quét khuôn mặt (02-auth, 13, 99-app, app.css, face):**
+- Mọi nút giờ có phản hồi tức thì: rung nhẹ khi chạm (haptic toàn cục) + hiệu ứng nhấn rõ hơn (scale .955 + tối nhẹ), tắt highlight xanh mặc định iOS.
+- Đăng xuất: có spinner ngay, không chờ server quá 700ms (trước đây retry mạng làm treo tới 1.5s) → thoát nhanh, mượt.
+- Vòng quét khuôn mặt: bỏ animation cũ (vừa xoay 270° vừa co giãn cung → giật, lúc hiện 3/4 lúc tí xíu). Thay bằng MỘT cung cố định (~28%) xoay tròn đều 360° mượt như spinner iOS; thành công thì vòng đầy trọn + check.
+
 **Đề xuất tính năng (chờ anh duyệt):**
 - Hồ sơ nhân viên đầy đủ + nhắc sinh nhật; khóa/mở/đổi vai trò ngay trong danh sách thành viên; xuất Excel nhân sự + báo cáo tháng cho TGĐ; đăng nhập QR cho nhân viên lớn tuổi; nhật ký thao tác admin (audit log).
 
