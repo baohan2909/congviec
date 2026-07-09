@@ -41,11 +41,11 @@ export async function renderBaoCao(root) {
         <textarea class="input mt" id="bcText"
           placeholder="Gõ tự do tại đây…"></textarea>
         <div class="photo-grid" id="bcPhotos"></div>
+        <button class="btn btn-primary btn-troly mt" id="bcAI">${ic('sparkle')} Trợ lý chuẩn hóa &amp; gửi</button>
         <div class="row mt">
           <button class="btn btn-quiet" id="bcCam">${ic('camera')} Thêm ảnh</button>
-          <button class="btn btn-quiet" id="bcAI">${ic('sparkle')} Chuẩn hóa &amp; gửi</button>
+          <button class="btn btn-quiet" id="bcRaw">${ic('send')} Gửi nguyên văn</button>
         </div>
-        <button class="btn btn-quiet mt" id="bcRaw">${ic('send')} Gửi nguyên văn</button>
       </details>
       <input type="file" id="bcFile" accept="image/*" multiple hidden>
     </div>

@@ -88,15 +88,23 @@ export async function renderKeHoach(root) {
             ${veHourline(listHT, diNgay, seg === 'hom_nay')}
           </div>
           <div id="khVanBan" style="display:none">
-            <div class="md-doc">${mdMini(keHoachSangVanBan(listHT, diNgay))}</div>
+            <div class="md-doc" id="khVbDoc">${mdMini(keHoachSangVanBan(listHT, diNgay))}</div>
           </div>
         </div>` : ''}`;
-    // Toggle Timeline / Văn bản
-    $$('#khView button', box).forEach((b) => b.onclick = () => {
+    // Toggle Timeline / Văn bản — nạp bản chi tiết (AI chuẩn hóa) đã lưu
+    let _daNapVb = false;
+    $$('#khView button', box).forEach((b) => b.onclick = async () => {
       $$('#khView button', box).forEach((x) => x.classList.toggle('on', x === b));
       const vb = b.dataset.v === 'vanban';
       $('#khTimeline', box).style.display = vb ? 'none' : '';
       $('#khVanBan', box).style.display = vb ? '' : 'none';
+      if (vb && !_daNapVb) {
+        _daNapVb = true;
+        try {
+          const r = await rpc('fn_ke_hoach_ngay', { p_ngay: ngay });
+          if (r?.van_ban) $('#khVbDoc', box).innerHTML = mdMini(r.van_ban);
+        } catch {}
+      }
     });
   } else {
     if (!Object.keys(nhom).length) {

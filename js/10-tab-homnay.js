@@ -83,18 +83,24 @@ function veCheckin(root) {
   }
 
   const ten = (D.trang_thai_ds || []).find((t) => t.ma === c.loai)?.ten || c.loai;
+  // Nơi làm việc HIỆN TẠI: mục di chuyển có giờ ≤ bây giờ và gần nhất; nếu chưa có thì lấy check-in gốc
+  const gioBayGio = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+  const dcSorted = [...(D.di_chuyen || [])].sort((a, b) => (a.gio > b.gio ? 1 : -1));
+  const dcHienTai = dcSorted.filter((d) => d.gio <= gioBayGio).pop();
+  const noiHienTai = dcHienTai ? dcHienTai.dia_diem : (c.dia_diem || ten);
   box.innerHTML = `
-    <h2 class="card-title">${ic('pin')} Nơi làm việc hôm nay</h2>
+    <div class="hd-ngay"><h2 class="card-title mb0">${ic('pin')} Nơi làm việc hiện tại</h2>
+      <span class="wn-clock mono" id="hnClock">${gioBayGio}</span></div>
     <div class="worknow">
       <span class="badge badge-acc">${ic('check')} ${esc(ten)}</span>
-      ${c.dia_diem ? `<span class="wn-place">${ic('pin')} ${esc(c.dia_diem)}</span>` : ''}
+      ${noiHienTai && noiHienTai !== ten ? `<span class="wn-place">${ic('pin')} ${esc(noiHienTai)}</span>` : ''}
       ${c.ghi_chu ? `<div class="muted" style="font-size:14px;width:100%">${esc(c.ghi_chu)}</div>` : ''}
     </div>
     ${(D.di_chuyen || []).length ? `
       <hr class="hr"><ul class="tl">
-        ${D.di_chuyen.map((d) => `<li>
+        ${dcSorted.map((d) => `<li ${d === dcHienTai ? 'class="tl-now"' : ''}>
           <span class="tl-time">${esc(d.gio)}</span>
-          <div class="tl-place">${esc(d.dia_diem)}</div>
+          <div class="tl-place">${esc(d.dia_diem)}${d === dcHienTai ? ' <span class="badge badge-acc">hiện tại</span>' : ''}</div>
           ${d.ly_do ? `<div class="tl-note">${esc(d.ly_do)}</div>` : ''}
         </li>`).join('')}
       </ul>` : ''}
@@ -103,6 +109,17 @@ function veCheckin(root) {
       <button class="btn btn-quiet" id="ciThem">${ic('plus')} Thêm nơi làm việc</button>
     </div>`;
 
+  // Đồng hồ giờ chạy (cập nhật mỗi 30s)
+  const clockEl = $('#hnClock', box);
+  if (clockEl) {
+    clearInterval(window._hnClock);
+    window._hnClock = setInterval(() => {
+      const el = document.getElementById('hnClock');
+      if (!el) { clearInterval(window._hnClock); return; }
+      el.textContent = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+    }, 30000);
+  }
+
   $('#ciChon', box).onclick = () => formChonNoi(root);
   $('#ciThem', box).onclick = () => formDiChuyen(root);
 }
@@ -110,7 +127,7 @@ function veCheckin(root) {
 // Đổi nơi làm việc chính: hiện lại lưới chọn trong sheet, không xóa dữ liệu cũ tới khi chọn
 function formChonNoi(root) {
   const sh = openSheet(`
-    <h3>${ic('pin')} Nơi làm việc hôm nay</h3>
+    <h3>${ic('pin')} Nơi làm việc hiện tại</h3>
     <div class="status-grid">
       ${(D.trang_thai_ds || []).map((t) => `
         <button class="btn status-btn" data-loai="${t.ma}" data-can="${t.can_dia_diem}">
@@ -153,24 +170,32 @@ function formDiChuyen(root) {
   const sh = openSheet(`
     <h3>${ic('pin')} Thêm nơi làm việc</h3>
     <p class="muted mb0" style="font-size:14px">Nhập giờ và nơi làm việc, hoặc bấm mic để trợ lý ghi giúp ạ.</p>
-    <div class="row mt">
-      <div class="field" style="flex:0 0 116px;margin-bottom:0"><label>Thời gian</label>
-        <input class="input" type="time" id="dcGio" value="${now}"></div>
-      <div class="field" style="flex:1;margin-bottom:0"><label>Nơi làm việc</label>
-        <input class="input" id="dcNoi" placeholder="Vd: Xưởng bảo hiểm, CH Quận 7…"></div>
-    </div>
-    <div class="field mt"><label>Ghi chú (không bắt buộc)</label><input class="input" id="dcLd"></div>
+    <div class="field mt" style="margin-bottom:12px"><label>Thời gian</label>
+      <input class="input" type="time" id="dcGio" value="${now}"></div>
+    <div class="field" style="margin-bottom:12px"><label>Nơi làm việc</label>
+      <input class="input" id="dcNoi" placeholder="Vd: Xưởng bảo hiểm, CH Quận 7…"></div>
+    <div class="field"><label>Ghi chú (không bắt buộc)</label><input class="input" id="dcLd"></div>
     <div class="row">
       <button class="btn btn-quiet" id="dcMic">${ic('mic')} Nhờ trợ lý</button>
       <button class="btn btn-primary" id="dcOK">${ic('check')} Ghi nhận</button>
     </div>`);
   $('#dcMic', sh).onclick = () => { closeSheet(); moGhiAm('checkin', { onSaved: () => renderHomNay(root) }); };
   $('#dcOK', sh).onclick = () => busy($('#dcOK', sh), async () => {
+    const gio = $('#dcGio', sh).value, noi = $('#dcNoi', sh).value.trim();
+    if (!noi) { toast('Anh/chị cho em xin nơi làm việc ạ.', 'err'); return; }
     try {
       await rpc('fn_them_di_chuyen', {
-        p_gio: $('#dcGio', sh).value, p_dia_diem: $('#dcNoi', sh).value.trim(),
+        p_gio: gio, p_dia_diem: noi,
         p_ly_do: $('#dcLd', sh).value.trim() || null,
       });
+      // Thêm luôn vào kế hoạch: mục "Có mặt tại [nơi]" đúng giờ này
+      try {
+        const hom = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+        await rpc('fn_tao_ke_hoach', {
+          p_tieu_de: `Có mặt tại ${noi}`, p_thoi_gian: `${hom}T${gio}:00+07:00`,
+          p_dia_diem: noi, p_mo_ta: null, p_nhac_truoc_phut: 0, p_nguon: 'HE_THONG',
+        });
+      } catch {}
       closeSheet(); toast(MC.daLuuChung); renderHomNay(root);
     } catch (e) { toast(loiNguoi(e), 'err'); }
   });

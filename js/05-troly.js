@@ -456,6 +456,11 @@ function xemTruocKeHoachNgay(sh, bi, cvs, _luuId, extra) {
             p_nhac_truoc_phut: Number(c.nhac_truoc_phut) || 30, p_nguon: 'AI_TRICH',
           });
         }
+        // Lưu bản văn bản chi tiết (AI chuẩn hóa) theo ngày → hiển thị lại đầy đủ
+        if (bi.van_ban) {
+          const ngay = (cvs[0]?.thoi_gian || '').slice(0, 10) || null;
+          try { await rpc('fn_luu_ke_hoach_ngay', { p_ngay: ngay, p_van_ban: bi.van_ban }); } catch {}
+        }
         xoaTam(_luuId);
         rung(20); closeSheet();
         toast(`Em đã lưu ${cvs.length} kế hoạch vào tab Kế hoạch ạ.`);

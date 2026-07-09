@@ -16,7 +16,11 @@ let ctx = null;
 
 export function openRecorder({ startText = '', onDone, contextHtml = '' }) {
   // onDone({ action: 'send'|'pause'|'cancel', text, audioBlob })
-  if (ctx) return;
+  // Nếu còn ctx cũ nhưng overlay đã rời DOM → ctx kẹt, reset để không chặn im lặng.
+  if (ctx) {
+    if (!ctx.ov || !document.body.contains(ctx.ov)) { ctx = null; }
+    else return;
+  }
   const ov = document.createElement('div');
   ov.className = 'rec-overlay open' + (contextHtml ? ' has-ctx' : '');
   ov.innerHTML = `
@@ -37,7 +41,13 @@ export function openRecorder({ startText = '', onDone, contextHtml = '' }) {
 
   batDau().catch((e) => {
     console.error(e);
-    toast(MC.loiMang, 'err');
+    const name = e?.name || '';
+    const msg = name === 'NotAllowedError' || name === 'SecurityError'
+      ? 'Anh/chị cần cho phép micro để em nghe ạ. Vào Cài đặt → cho phép Micro rồi thử lại.'
+      : name === 'NotFoundError'
+      ? 'Máy chưa có micro khả dụng ạ.'
+      : 'Chưa mở được micro ạ, anh/chị thử lại giúp em.';
+    toast(msg, 'err', 5000);
     dong('cancel');
   });
 
