@@ -47,9 +47,14 @@ async function thucThiAuto(tc) {
     return { icon: 'pin', mota: `Đã chấm nơi làm việc hôm nay${i.dia_diem ? ` — ${i.dia_diem}` : ''}`, sua: 'homnay' };
   }
   if (tc.name === 'them_di_chuyen') {
-    const r = await rpc('fn_them_di_chuyen', { p_gio: i.gio, p_dia_diem: i.dia_diem, p_ly_do: i.ly_do || null });
-    return { icon: 'car', mota: `Đã ghi di chuyển ${i.gio} — ${i.dia_diem}`,
-      undo: () => rpc('fn_xoa_di_chuyen', { p_id: r.id }) };
+    // Ghi nơi làm việc = tạo mốc kế hoạch có địa điểm (timeline nơi làm việc lấy từ kế hoạch)
+    const hom = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
+    const r = await rpc('fn_tao_ke_hoach', {
+      p_tieu_de: `Có mặt tại ${i.dia_diem}`, p_thoi_gian: `${hom}T${i.gio}:00+07:00`,
+      p_dia_diem: i.dia_diem, p_mo_ta: i.ly_do || null, p_nhac_truoc_phut: 0, p_nguon: 'HE_THONG',
+    });
+    return { icon: 'car', mota: `Đã ghi nơi làm việc ${i.gio} — ${i.dia_diem}`,
+      undo: () => rpc('fn_cap_nhat_ke_hoach', { p_id: r.id, p_trang_thai: 'DA_HUY' }) };
   }
   if (tc.name === 'tao_ke_hoach') {
     const r = await rpc('fn_tao_ke_hoach', {

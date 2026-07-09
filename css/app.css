@@ -848,3 +848,19 @@ html[data-theme="dark"] .login-title {
   border-radius: 12px;
 }
 .person-active .list-title { color: var(--acc-ink); }
+
+/* Timeline nơi làm việc (dùng lại style timeplan) */
+.wl-plan .tp-body { display: flex; align-items: center; gap: 8px; }
+.wl-plan .tp-card { flex: 1; }
+.tp-place { font-size: 15px; font-weight: 600; }
+.tp-tags { display: flex; gap: 6px; margin-top: 3px; flex-wrap: wrap; }
+.tp-dot.now { background: var(--acc); box-shadow: 0 0 0 3px var(--bg), 0 0 10px var(--acc-glow); }
+.wl-plan .tp-row.tp-now .tp-place { color: var(--acc-ink); }
+.wl-plan .wl-edit { flex: 0 0 auto; width: 36px; height: 36px; border: none; background: transparent;
+  color: var(--ink-3); cursor: pointer; border-radius: 8px; display: grid; place-items: center; }
+.wl-plan .wl-edit:active { background: var(--surface-2); transform: scale(.92); }
+.wl-plan .wl-edit .ic { width: 18px; height: 18px; }
+
+/* Icon nhỏ trong badge loại nơi làm việc */
+.ic-xs { width: 13px; height: 13px; opacity: .8; vertical-align: -1px; }
+.wn-loai { display: inline-flex; align-items: center; gap: 5px; }
