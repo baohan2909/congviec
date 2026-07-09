@@ -8,8 +8,9 @@
 // ============================================================
 import { SYS, AI_GATEWAY, MC, loiNguoi } from './00-config.js';
 import { rpc, phien, uploadAnh } from './01-supabase.js';
-import { $, $$, ic, esc, toast, openSheet, closeSheet, busy, fmtNgayGio, rung } from './03-ui.js';
+import { $, $$, ic, esc, toast, openSheet, closeSheet, busy, fmtNgayGio, mdMini, rung } from './03-ui.js';
 import { openRecorder } from './04-voice.js';
+import { luuTam, xoaTam, danhDauLoi, layTam as layTamPub, xoaTam as xoaTamPub } from './08-luutam.js';
 
 // ---------- Gọi Edge Function ----------
 export async function goiTroLy(text, mode = 'troly') {
@@ -107,6 +108,25 @@ async function thucThiAuto(tc) {
     return { icon: 'file',
       mota: `Đã bổ sung báo cáo hôm nay: "${(i.noi_dung_them || '').slice(0, 80)}"` };
   }
+  if (tc.name === 'giao_viec') {
+    const r = await rpc('fn_tao_cong_viec', {
+      p_tieu_de: i.tieu_de, p_giao_cho: i.giao_cho, p_dang: i.dang,
+      p_mo_ta: i.mo_ta || null, p_uu_tien: i.uu_tien || 'BINH_THUONG',
+      p_han: i.han || null, p_chu_ky: i.chu_ky || null, p_moc: [],
+    });
+    return { icon: 'briefcase',
+      mota: `Đã giao việc "${i.tieu_de}" cho ${i.giao_cho}${i.han ? ` — hạn ${fmtNgayGio(i.han)}` : ''}`,
+      undo: () => rpc('fn_xoa_cong_viec_moi', { p_id: r }) };
+  }
+  if (tc.name === 'chot_cong_viec') {
+    await rpc('fn_cap_nhat_cong_viec', { p_id: Number(i.id), p_thay_doi: {
+      trang_thai: i.trang_thai,
+      ...(i.trang_thai === 'HOAN_THANH' ? { tien_do: 100 } : {}),
+      ghi_chu: i.ghi_chu || ({ HOAN_THANH: 'Hoàn thành', VUONG_MAC: 'Báo vướng mắc', DANG_LAM: 'Đang thực hiện' }[i.trang_thai]),
+    }});
+    return { icon: 'check',
+      mota: `Công việc → ${({ HOAN_THANH: 'Hoàn thành', VUONG_MAC: 'Vướng mắc', DANG_LAM: 'Đang thực hiện' }[i.trang_thai])}${i.ghi_chu ? `: ${i.ghi_chu}` : ''}` };
+  }
   if (tc.name === 'tao_nhac_viec') {
     const r = await rpc('fn_tao_ke_hoach', {
       p_tieu_de: i.noi_dung, p_thoi_gian: i.lich_gui,
@@ -131,14 +151,39 @@ export async function xuLyVoiTroLy(text, mode = 'troly', extra = {}) {
     <div class="skeleton" style="height:90px"></div>
     <div class="skeleton mt" style="height:56px"></div>`);
 
+  // AN TOÀN GIỌNG NÓI: giữ lại đoạn vừa nói trước khi gọi AI
+  const _luuId = luuTam(text, mode, extra.meta || {});
+
   let data;
   try { data = await goiTroLy(text, mode); }
-  catch (e) { closeSheet(); toast(loiNguoi(e), 'err'); return; }
+  catch (e) {
+    danhDauLoi(_luuId); // giữ nguyên để khôi phục
+    closeSheet();
+    khoiPhucSau(text, mode, extra, loiNguoi(e));
+    return;
+  }
 
   const calls = data.tool_calls || [];
   const bcCall = calls.find((c) => c.name === 'tao_bao_cao');
-  const autoCalls = calls.filter((c) => !['tao_bao_cao', 'tra_loi'].includes(c.name));
+  const khNgayCall = calls.find((c) => c.name === 'lap_ke_hoach_ngay');
+  const traCuuCall = calls.find((c) => c.name === 'tra_cuu');
+  const autoCalls = calls.filter((c) => !['tao_bao_cao', 'lap_ke_hoach_ngay', 'tra_cuu', 'tra_loi'].includes(c.name));
   const traLoi = calls.find((c) => c.name === 'tra_loi')?.input?.noi_dung;
+
+  // ---- KẾ HOẠCH NGÀY: hiện SONG SONG bản văn bản + timeline xác nhận ----
+  if (khNgayCall) {
+    const bi = khNgayCall.input || {};
+    const cvs = (bi.cong_viec || []).map((c, idx) => ({ ...c, _i: idx }));
+    xemTruocKeHoachNgay(sh, bi, cvs, _luuId, extra);
+    return;
+  }
+
+  // ---- TRA CỨU: gọi RPC lấy số liệu thật, hiện kết quả ----
+  if (traCuuCall && !autoCalls.length && !bcCall) {
+    xoaTam(_luuId);
+    await xemTraCuu(sh, traCuuCall.input || {}, data.text);
+    return;
+  }
 
   // ---- Chỉ trò chuyện ----
   if (!bcCall && !autoCalls.length) {
@@ -147,6 +192,7 @@ export async function xuLyVoiTroLy(text, mode = 'troly', extra = {}) {
       <div class="pv-block">${esc(traLoi || data.text || 'Em đã nghe rồi ạ.').replace(/\n/g, '<br>')}</div>
       <button class="btn btn-quiet mt" id="tlDong">Đóng</button>`;
     $('#tlDong', sh).onclick = closeSheet;
+    xoaTam(_luuId); // trò chuyện xong, không có gì để mất
     return;
   }
 
@@ -181,6 +227,7 @@ export async function xuLyVoiTroLy(text, mode = 'troly', extra = {}) {
       ${doneHTML}
       <button class="btn btn-primary mt" id="tlXong">${ic('check')} Xong</button>`;
     gắnUndo(sh, daLam);
+    xoaTam(_luuId); // việc an toàn đã thực thi + đã lưu vào hệ thống
     $('#tlXong', sh).onclick = () => { closeSheet(); extra.onSaved?.(); };
     return;
   }
@@ -268,6 +315,7 @@ export async function xuLyVoiTroLy(text, mode = 'troly', extra = {}) {
         p_co_van_de: $('#bcVanDe', sh).checked, p_audio_path: audio_path,
         p_anh: anh, p_ke_hoach: keHoach,
       });
+      xoaTam(_luuId); // báo cáo đã lưu, an toàn xóa bản tạm
       rung(20); closeSheet(); toast(MC.daLuuBaoCao);
       extra.onSaved?.();
     } catch (e) { toast(loiNguoi(e), 'err'); }
@@ -325,4 +373,186 @@ export function moGhiAm(mode = 'troly', extra = {}) {
       };
     },
   });
+}
+
+
+
+// ============================================================
+// Xem trước KẾ HOẠCH NGÀY — 2 dạng song song:
+//  · Bản văn bản bài bản (đọc)
+//  · Timeline các mốc giờ (xác nhận / sửa / bỏ từng mục)
+// Xác nhận xong mới tạo kế hoạch → vào tab Kế hoạch.
+// ============================================================
+function xemTruocKeHoachNgay(sh, bi, cvs, _luuId, extra) {
+  const tenGoi = phien.nd().ten_goi;
+  const veList = () => cvs.map((c) => `
+    <div class="kh-item" data-i="${c._i}">
+      <span class="badge badge-gold mono">${fmtNgayGio(c.thoi_gian)}</span>
+      <div class="list-main">
+        <input class="input kh-td" value="${esc(c.tieu_de)}" style="min-height:42px;font-weight:600">
+        ${c.dia_diem ? `<div class="list-sub">${esc(c.dia_diem)}</div>` : ''}
+      </div>
+      <button class="btn btn-sm btn-quiet kh-bo" aria-label="Bỏ mục này">${ic('x')}</button>
+    </div>`).join('');
+
+  const draw = () => {
+    sh.innerHTML = `<div class="sheet-grip"></div>
+      <h3>${ic('sparkle')} Kế hoạch em vừa lập</h3>
+      <div class="seg" id="khSeg">
+        <button data-v="ban" class="on">Bản kế hoạch</button>
+        <button data-v="tl">Dòng thời gian</button>
+      </div>
+      <div id="khViewBan" class="pv-block">
+        <div class="md-doc">${mdMini(bi.van_ban || '')}</div>
+      </div>
+      <div id="khViewTl" class="hidden">
+        ${cvs.length ? veList() : '<p class="muted">Không tách được mốc giờ nào ạ.</p>'}
+      </div>
+      <div class="row mt">
+        <button class="btn btn-quiet" id="khNoiThem">${ic('mic')} Nói thêm</button>
+        <button class="btn btn-primary" id="khXacNhan">${ic('check')} Xác nhận kế hoạch</button>
+      </div>
+      <p class="muted mt mb0" style="font-size:13px">Sau khi xác nhận, ${esc(cvs.length)} mục sẽ vào tab Kế hoạch và em nhắc đúng giờ ạ.</p>`;
+
+    $$('#khSeg button', sh).forEach((b) => b.onclick = () => {
+      $$('#khSeg button', sh).forEach((x) => x.classList.toggle('on', x === b));
+      $('#khViewBan', sh).classList.toggle('hidden', b.dataset.v !== 'ban');
+      $('#khViewTl', sh).classList.toggle('hidden', b.dataset.v !== 'tl');
+    });
+    $$('.kh-bo', sh).forEach((b) => b.onclick = () => {
+      const i = Number(b.closest('.kh-item').dataset.i);
+      const idx = cvs.findIndex((x) => x._i === i);
+      if (idx >= 0) cvs.splice(idx, 1);
+      draw();
+      $$('#khSeg button', sh)[1].click();
+    });
+    $$('.kh-td', sh).forEach((inp) => inp.onchange = () => {
+      const i = Number(inp.closest('.kh-item').dataset.i);
+      const c = cvs.find((x) => x._i === i); if (c) c.tieu_de = inp.value;
+    });
+    $('#khNoiThem', sh).onclick = () => { closeSheet(); moGhiAm('troly', extra); };
+    $('#khXacNhan', sh).onclick = () => busy($('#khXacNhan', sh), async () => {
+      if (!cvs.length) { toast('Chưa có mục nào để lưu ạ.', 'err'); return; }
+      try {
+        for (const c of cvs) {
+          await rpc('fn_tao_ke_hoach', {
+            p_tieu_de: c.tieu_de, p_thoi_gian: c.thoi_gian,
+            p_dia_diem: c.dia_diem || null, p_mo_ta: null,
+            p_nhac_truoc_phut: Number(c.nhac_truoc_phut) || 30, p_nguon: 'AI_TRICH',
+          });
+        }
+        xoaTam(_luuId);
+        rung(20); closeSheet();
+        toast(`Em đã lưu ${cvs.length} kế hoạch vào tab Kế hoạch ạ.`);
+        extra.onSaved?.();
+        window.cvGoTab?.('kehoach');
+      } catch (e) { toast(loiNguoi(e), 'err'); }
+    });
+  };
+  draw();
+}
+
+
+// ============================================================
+// Tra cứu bằng lời: gọi RPC → trình bày kết quả gọn, bài bản
+// ============================================================
+async function xemTraCuu(sh, input, dan) {
+  const tenGoi = phien.nd().ten_goi;
+  sh.innerHTML = `<div class="sheet-grip"></div>
+    <h3>${ic('sparkle')} ${MC.troLyCua(tenGoi)}</h3>
+    <div class="skeleton" style="height:80px"></div>`;
+  let r;
+  try {
+    r = await rpc('fn_troly_tra_cuu', {
+      p_loai: input.loai, p_pham_vi: input.pham_vi || 'toi',
+      p_tu_khoa: input.tu_khoa || null, p_ngay: null,
+    });
+  } catch (e) { sh.innerHTML = `<div class="sheet-grip"></div><p>${esc(loiNguoi(e))}</p>`; return; }
+
+  let body = '';
+  if (r?.loi === 'CAN_QUYEN_QUAN_LY') {
+    body = '<p class="muted">Thông tin này chỉ dành cho Ban Quản lý ạ.</p>';
+  } else {
+    const ds = r?.ds || [];
+    const tenLoai = {
+      ai_chua_bao_cao: 'Chưa gửi báo cáo', ai_chua_checkin: 'Chưa chấm nơi làm việc',
+      van_de_hom_nay: 'Vấn đề phát sinh hôm nay', cong_viec_tre: 'Công việc đang trễ hạn',
+      cong_viec_cua: `Công việc ${input.tu_khoa ? '"' + input.tu_khoa + '"' : ''}`,
+    }[r?.loai] || 'Kết quả';
+
+    if (r?.loai === 'tom_tat_ngay') {
+      body = `<div class="md-doc">
+        <div class="md-sec">Tình hình hôm nay của ${esc(tenGoi)}</div>
+        <ul class="md-ul">
+          <li>Nơi làm việc: <b>${r.checkin ? esc(r.checkin.loai) + (r.checkin.dia_diem ? ' — ' + esc(r.checkin.dia_diem) : '') : 'chưa chấm'}</b></li>
+          <li>Kế hoạch: <b>${r.so_ke_hoach || 0}</b> mục</li>
+          <li>Báo cáo: <b>${r.da_bao_cao ? 'đã gửi' : 'chưa gửi'}</b></li>
+          <li>Công việc đang phụ trách: <b>${r.so_cong_viec || 0}</b></li>
+        </ul></div>`;
+    } else if (!ds.length) {
+      body = `<div class="pv-block"><b>${esc(tenLoai)}:</b> không có ai/mục nào ạ. ${r?.loai === 'ai_chua_bao_cao' || r?.loai === 'cong_viec_tre' ? 'Mọi thứ đang ổn.' : ''}</div>`;
+    } else {
+      const dong = ds.map((x, idx) => {
+        if (r.loai === 'cong_viec_cua' || r.loai === 'cong_viec_tre') {
+          return `<li><b>${esc(x.tieu_de)}</b>${x.tien_do != null ? ` — ${x.tien_do}%` : ''}${x.ten_nhan ? ` (${esc(x.ten_nhan)})` : ''}${x.cap_nhat_moi ? `<div class="tp-sub">${esc(x.cap_nhat_moi)}</div>` : ''}${x.han ? `<div class="tp-sub">Hạn ${fmtNgayGio(x.han)}</div>` : ''}</li>`;
+        }
+        if (r.loai === 'van_de_hom_nay') {
+          return `<li><b>${esc(x.ho_ten)}</b><div class="tp-sub">${esc(String(x.noi_dung).replace(/[*#]/g, '').slice(0, 120))}</div></li>`;
+        }
+        return `<li><b>${esc(x.ho_ten)}</b>${x.ten_pb ? ` — ${esc(x.ten_pb)}` : ''}</li>`;
+      }).join('');
+      body = `<div class="md-doc"><div class="md-sec">${esc(tenLoai)} (${ds.length})</div><ol class="md-ol">${dong}</ol></div>`;
+    }
+  }
+
+  sh.innerHTML = `<div class="sheet-grip"></div>
+    <h3>${ic('sparkle')} ${MC.troLyCua(tenGoi)}</h3>
+    ${dan ? `<p class="muted mb0">${esc(dan)}</p>` : ''}
+    <div class="pv-block">${body}</div>
+    <button class="btn btn-quiet mt" id="tcDong">Đóng</button>`;
+  $('#tcDong', sh).onclick = closeSheet;
+}
+
+// ============================================================
+// Khi AI lỗi giữa chừng: KHÔNG mất nội dung. Cho người dùng
+// xem lại đoạn vừa nói + thử lại / copy / sửa tay.
+// ============================================================
+function khoiPhucSau(text, mode, extra, loi) {
+  const sh = openSheet(`
+    <h3>${ic('alert')} Trợ lý đang trục trặc</h3>
+    <p class="muted mb0">${esc(loi || 'Có lỗi khi xử lý.')} — nhưng em vẫn giữ nguyên đoạn anh/chị vừa nói ạ, không mất đâu.</p>
+    <div class="pv-block">
+      <span class="pv-kind">${ic('mic')} Nội dung đã ghi</span>
+      <textarea class="input" id="kpText" style="min-height:160px">${esc(text)}</textarea>
+    </div>
+    <div class="row mt">
+      <button class="btn btn-quiet" id="kpCopy">${ic('file')} Sao chép</button>
+      <button class="btn btn-primary" id="kpThuLai">${ic('undo')} Thử lại</button>
+    </div>
+    <p class="muted mt mb0" style="font-size:13px">Đoạn này được tự động giữ lại kể cả khi anh/chị thoát app — mở lại sẽ có nút khôi phục ạ.</p>`);
+  $('#kpCopy', sh).onclick = async () => {
+    try { await navigator.clipboard.writeText($('#kpText', sh).value); toast('Đã sao chép ạ.'); } catch {}
+  };
+  $('#kpThuLai', sh).onclick = () => {
+    const t = $('#kpText', sh).value.trim();
+    if (!t) return;
+    closeSheet();
+    xuLyVoiTroLy(t, mode, extra);
+  };
+}
+
+// Kiểm tra bản còn kẹt khi mở app — gọi từ 99-app sau đăng nhập
+export function kiemTraGiongNoiChoXuLy() {
+  const b = layTamPub();
+  if (!b) return;
+  const sh = openSheet(`
+    <h3>${ic('undo')} Khôi phục nội dung đã nói</h3>
+    <p class="muted mb0">Lần trước có một đoạn anh/chị nói mà em chưa xử lý xong (${new Date(b.luc).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}). Em vẫn giữ nguyên đây ạ:</p>
+    <div class="pv-block"><div style="font-size:15px;white-space:pre-wrap">${esc(b.text)}</div></div>
+    <div class="row mt">
+      <button class="btn btn-quiet" id="kgBo">Bỏ qua</button>
+      <button class="btn btn-primary" id="kgXuLy">${ic('sparkle')} Xử lý tiếp</button>
+    </div>`);
+  $('#kgBo', sh).onclick = () => { xoaTamPub(); closeSheet(); };
+  $('#kgXuLy', sh).onclick = () => { closeSheet(); xuLyVoiTroLy(b.text, b.mode || 'troly', { meta: b.meta }); };
 }

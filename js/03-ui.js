@@ -46,6 +46,36 @@ export const esc = (s) => String(s ?? '')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 export const nl2html = (s) =>
   esc(s).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/\n/g, '<br>');
+
+// Markdown mini cho tài liệu (kế hoạch/báo cáo): tiêu đề đậm, danh sách số, gạch đầu dòng
+export function mdMini(src) {
+  const lines = String(src ?? '').split('\n');
+  let html = '', mode = ''; // '', 'ol', 'ul'
+  const close = () => { if (mode) { html += mode === 'ol' ? '</ol>' : '</ul>'; mode = ''; } };
+  const inline = (t) => esc(t)
+    .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
+    .replace(/`(.+?)`/g, '<code>$1</code>');
+  for (let raw of lines) {
+    const line = raw.trim();
+    if (!line) { close(); continue; }
+    let m;
+    if ((m = line.match(/^(\d+)[.)]\s+(.*)$/))) {
+      if (mode !== 'ol') { close(); html += '<ol class="md-ol">'; mode = 'ol'; }
+      html += `<li>${inline(m[2])}</li>`;
+    } else if ((m = line.match(/^[-*•]\s+(.*)$/))) {
+      if (mode !== 'ul') { close(); html += '<ul class="md-ul">'; mode = 'ul'; }
+      html += `<li>${inline(m[1])}</li>`;
+    } else if ((m = line.match(/^#{1,3}\s+(.*)$/))) {
+      close(); html += `<h4 class="md-h">${inline(m[1])}</h4>`;
+    } else if (/^\*\*.+\*\*:?$/.test(line)) {
+      close(); html += `<div class="md-sec">${inline(line.replace(/:$/, ''))}</div>`;
+    } else {
+      close(); html += `<p class="md-p">${inline(line)}</p>`;
+    }
+  }
+  close();
+  return html;
+}
 export const rung = (ms = 12) => { try { navigator.vibrate?.(ms); } catch {} };
 
 // ---------- Ngày giờ VN ----------

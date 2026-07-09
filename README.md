@@ -1,4 +1,4 @@
-# CÔNG VIỆC — v0.1.6
+# CÔNG VIỆC — v0.1.8
 
 **Hệ thống báo cáo & quản trị công việc** cho Ban Quản trị Nón Sơn.
 PWA thuần (không cần build) · GitHub Pages · Supabase Pro region Sydney · Claude API.
@@ -105,6 +105,67 @@ supabase/  (KHÔNG nằm trong repo HTML, giữ trên máy anh làm tham chiếu
 ---
 
 ## NHẬT KÝ NỐI TIẾP
+
+### v0.1.8 — 08/07/2026 · Trợ lý làm thay toàn bộ nghiệp vụ công việc
+
+Aroma chốt: trợ lý phủ **toàn bộ nghiệp vụ công việc** (giữ cơ chế "làm ngay + Hoàn tác"), **trừ** quản trị nhân sự và xóa dữ liệu (vẫn bấm tay có xác nhận — tránh rủi ro nghe nhầm tên/mã trên 540 nhân sự).
+
+**3 nhóm năng lực mới cho trợ lý (nâng ai-gateway → v6):**
+- **Giao việc bằng lời** — tool `giao_viec`: "giao phòng kỹ thuật việc X hạn thứ 6", "giao anh Nam kiểm kho mỗi sáng" → tạo công việc (có thời hạn/thường xuyên), báo người nhận. Chỉ chạy khi người dùng là quản lý; khớp người/phòng qua danh sách mã nạp sẵn trong ngữ cảnh. Có **Hoàn tác** (xóa việc vừa tạo trong 10 phút).
+- **Chốt công việc** — tool `chot_cong_viec`: "việc kho mới xong rồi" → Hoàn thành (tiến độ 100%); "dự án X vướng mắc" → báo vướng mắc.
+- **Tra cứu bằng lời** — tool `tra_cuu` + RPC `fn_troly_tra_cuu`: "tuần này ai chưa báo cáo", "ai chưa chấm công", "hôm nay có vấn đề gì", "việc nào đang trễ", "việc X tới đâu rồi", "hôm nay tôi làm gì" → lấy **số liệu thật** rồi trình bày bài bản (đánh số), không bịa. Phạm vi công ty chỉ mở cho quản lý (`CAN_QUYEN_QUAN_LY` nếu không đủ quyền).
+
+**Tổng năng lực trợ lý hiện tại — 14 công cụ:** chấm nơi làm việc · thêm di chuyển · lập kế hoạch ngày (văn bản + timeline) · tạo kế hoạch lẻ · tạo nhắc · soạn báo cáo (đối chiếu kế hoạch) · sửa kế hoạch · sửa di chuyển · bổ sung báo cáo · cập nhật tiến độ việc · **giao việc** · **chốt hoàn thành/vướng mắc** · **tra cứu số liệu** · trả lời/trò chuyện.
+
+**Ranh giới giữ nguyên (không cho trợ lý tự chạy):** tạo/sửa/xóa nhân viên, đổi phân quyền, xóa dữ liệu vận hành — bấm tay trong tab Quản trị, có bước xác nhận.
+
+**File thay đổi:** `js/05-troly.js`, `js/00-config.js`, `sw.js`, `README.md`.
+**SQL:** `UPDATE_v0.1.8.sql` (RPC `fn_troly_tra_cuu` + `fn_xoa_cong_viec_moi`).
+**Edge Function:** dán lại `ai-gateway` (v6).
+**Kiểm chứng:** SQL 6/6 pass (tra cứu chưa báo cáo, việc trễ, tìm việc, tóm tắt ngày, undo giao việc, chặn quyền). JS pass syntax, RPC đối chiếu đủ.
+
+---
+
+### v0.1.7 — 08/07/2026 · Kế hoạch bài bản · Timeline thông minh · Chuẩn hóa trình bày · An toàn giọng nói
+
+**① An toàn dữ liệu giọng nói (ưu tiên cao nhất) — `js/08-luutam.js` mới:**
+- Mọi đoạn vừa nói được GIỮ vào localStorage NGAY trước khi gọi AI (tự động, không phải "lưu nháp" thủ công).
+- AI xử lý xong + dữ liệu đã lưu hệ thống → xóa bản tạm. AI lỗi/mất mạng → giữ nguyên, hiện sheet "Trợ lý đang trục trặc" cho xem lại toàn văn + Sao chép + Thử lại. Thoát app giữa chừng → lần mở sau tự hỏi "Khôi phục nội dung đã nói".
+- Kết quả: nội dung người dùng nói KHÔNG BAO GIỜ mất vì lỗi AI/hệ thống.
+
+**② AI lập kế hoạch bài bản — 2 dạng SONG SONG:**
+- Tool mới `lap_ke_hoach_ngay`: khi người dùng nói một loạt việc, AI trả về đồng thời (a) **BẢN KẾ HOẠCH VĂN BẢN** trình bày như tài liệu — đánh số, gạch đầu dòng, phân nhóm, **in đậm** từ khóa quan trọng; và (b) **danh sách tách theo giờ** để hệ thống nhắc.
+- Sheet xem trước có 2 tab: "Bản kế hoạch" (đọc) và "Dòng thời gian" (sửa tên / bỏ từng mục). Xác nhận xong mới tạo → tự nhảy sang tab Kế hoạch.
+- Renderer markdown mới `mdMini()`: số thứ tự dạng ô vuông aurora, bullet chấm tròn, tiêu đề mục in đậm — áp dụng thống nhất cho kế hoạch, báo cáo, tổng hợp AI.
+
+**③ Timeline thông minh (gom mốc thực tế) — viết lại `veHourline` → `veHourline` timeplan:**
+- KHÔNG liệt kê mọi giờ trống nữa. Chỉ hiện các mốc CÓ việc (07:30, 09:00, 13:30…), nối bằng trục dọc có chấm màu theo trạng thái.
+- Mốc "Bây giờ" chèn đúng vị trí trong dòng chảy. Sửa triệt để lỗi **tràn nội dung / tràn lề hai bên** (chip có ellipsis, grid cố định 52px·20px·1fr).
+
+**④ Báo cáo dựa kế hoạch, 2 nhóm, đánh số** — nâng cấp tool `tao_bao_cao`:
+- Cấu trúc chuẩn: **I. Công việc theo kế hoạch** (đánh số, việc thường ngày như quản lý xưởng nêu rõ sự cố/số lượng/vấn đề) · **II. Công việc phát sinh** (đánh số) · **III. Vấn đề & đề xuất**. Liên kết chặt với kế hoạch đã lập.
+
+**⑤ Chuẩn hóa toàn hệ thống:** mọi công việc/báo cáo đánh số, cùng một logic trình bày qua `mdMini`.
+
+**⑥ Dashboard Quản trị — gọn & có bộ lọc:**
+- Đổi tên "Hôm nay ai ở đâu" → **"Kế hoạch Ban điều hành"**.
+- Thẻ nhân sự thu gọn 1 dòng (avatar nhỏ, chấm xanh/vàng = đã/chưa báo cáo) — hết tình trạng thẻ quá cao chiếm diện tích.
+- **Bộ lọc nhóm** (Tất cả / Chưa cập nhật / từng địa điểm) ngay trên danh sách.
+- Bấm một thành viên → sheet **thông tin đầy đủ** (mã NV, phòng ban, nơi làm việc, địa điểm, tình trạng báo cáo, timeline di chuyển).
+
+**⑦ Nơi làm việc hôm nay — nhất quán & gọn:**
+- Bỏ nút "Đổi" (thừa — phải nhập lại). Thay bằng "Đổi nơi làm việc" (mở lại lưới chọn trong sheet) + "Thêm nơi làm việc".
+- Thẻ trạng thái đồng đều kích thước (lưới 2 cột, thẻ lẻ cuối trải rộng).
+- "Cập nhật di chuyển" → **"Thêm nơi làm việc"**: chỉ nhập Thời gian + Nơi làm việc (giờ và nơi cùng một hàng, hết lỗi giờ rớt xuống dưới), có nút "Nhờ trợ lý".
+
+**⑧ Sửa lỗi reload** (app hay tự nhảy về Quản trị): `setInterval` tự-làm-mới của tab Quản trị trước đây vẫn chạy sau khi chuyển tab và vẽ đè lên tab khác. Nay chỉ làm mới khi đang thực sự ở tab Quản trị (`window.cvTabHienTai==='quantri'` và `#qtBody` còn trong DOM), nếu không thì tự dừng timer.
+
+**File thay đổi (frontend):** `js/08-luutam.js` (mới), `js/03-ui.js` (mdMini), `js/05-troly.js`, `js/10-tab-homnay.js`, `js/12-tab-kehoach.js`, `js/11-tab-baocao.js`, `js/14-tab-quantri.js`, `js/99-app.js`, `js/00-config.js`, `css/app.css`, `sw.js`, `README.md`.
+**Edge Function:** dán lại `ai-gateway` (v5 — thêm tool `lap_ke_hoach_ngay`, nâng cấp `tao_bao_cao`).
+**SQL:** KHÔNG có — patch thuần frontend + prompt, mọi RPC đã có sẵn (đã đối chiếu 35 RPC client gọi đều tồn tại).
+**Kiểm chứng:** toàn bộ JS pass syntax; đối chiếu RPC đầy đủ; braces Edge Function cân bằng. Timeline/nơi làm việc/dashboard cần Aroma xem trên máy để xác nhận cảm giác.
+
+---
 
 ### v0.1.6 — 08/07/2026 · Face mượt + Sửa/Xóa/Bổ sung toàn diện + Timeline giờ
 

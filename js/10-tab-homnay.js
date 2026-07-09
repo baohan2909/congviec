@@ -85,13 +85,10 @@ function veCheckin(root) {
   const ten = (D.trang_thai_ds || []).find((t) => t.ma === c.loai)?.ten || c.loai;
   box.innerHTML = `
     <h2 class="card-title">${ic('pin')} Nơi làm việc hôm nay</h2>
-    <div class="row" style="justify-content:space-between">
-      <div>
-        <span class="badge badge-acc">${ic('check')} ${esc(ten)}</span>
-        ${c.dia_diem ? `<div class="mt" style="font-weight:600">${ic('pin')} ${esc(c.dia_diem)}</div>` : ''}
-        ${c.ghi_chu ? `<div class="muted" style="font-size:14px">${esc(c.ghi_chu)}</div>` : ''}
-      </div>
-      <button class="btn btn-sm btn-quiet" id="ciDoi">${ic('edit')} Đổi</button>
+    <div class="worknow">
+      <span class="badge badge-acc">${ic('check')} ${esc(ten)}</span>
+      ${c.dia_diem ? `<span class="wn-place">${ic('pin')} ${esc(c.dia_diem)}</span>` : ''}
+      ${c.ghi_chu ? `<div class="muted" style="font-size:14px;width:100%">${esc(c.ghi_chu)}</div>` : ''}
     </div>
     ${(D.di_chuyen || []).length ? `
       <hr class="hr"><ul class="tl">
@@ -101,10 +98,30 @@ function veCheckin(root) {
           ${d.ly_do ? `<div class="tl-note">${esc(d.ly_do)}</div>` : ''}
         </li>`).join('')}
       </ul>` : ''}
-    <button class="btn btn-quiet mt" id="ciDiChuyen">${ic('plus')} Cập nhật di chuyển</button>`;
+    <div class="row mt">
+      <button class="btn btn-quiet" id="ciChon">${ic('edit')} Đổi nơi làm việc</button>
+      <button class="btn btn-quiet" id="ciThem">${ic('plus')} Thêm nơi làm việc</button>
+    </div>`;
 
-  $('#ciDoi', box).onclick = () => { D.checkin = null; veCheckin(root); };
-  $('#ciDiChuyen', box).onclick = () => formDiChuyen(root);
+  $('#ciChon', box).onclick = () => formChonNoi(root);
+  $('#ciThem', box).onclick = () => formDiChuyen(root);
+}
+
+// Đổi nơi làm việc chính: hiện lại lưới chọn trong sheet, không xóa dữ liệu cũ tới khi chọn
+function formChonNoi(root) {
+  const sh = openSheet(`
+    <h3>${ic('pin')} Nơi làm việc hôm nay</h3>
+    <div class="status-grid">
+      ${(D.trang_thai_ds || []).map((t) => `
+        <button class="btn status-btn" data-loai="${t.ma}" data-can="${t.can_dia_diem}">
+          ${ic(t.icon)} ${esc(t.ten)}
+        </button>`).join('')}
+    </div>`);
+  $$('.status-btn', sh).forEach((b) => b.onclick = () => {
+    rung();
+    if (b.dataset.can === 'true') { closeSheet(); hoiDiaDiem(b.dataset.loai, root); }
+    else { closeSheet(); luuCheckin(b.dataset.loai, null, null, root); }
+  });
 }
 
 function hoiDiaDiem(loai, root) {
@@ -134,15 +151,20 @@ async function luuCheckin(loai, diaDiem, ghiChu, root) {
 function formDiChuyen(root) {
   const now = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
   const sh = openSheet(`
-    <h3>${ic('car')} Cập nhật di chuyển</h3>
-    <div class="row">
-      <div class="field" style="flex:0 0 120px"><label>Giờ</label>
+    <h3>${ic('pin')} Thêm nơi làm việc</h3>
+    <p class="muted mb0" style="font-size:14px">Nhập giờ và nơi làm việc, hoặc bấm mic để trợ lý ghi giúp ạ.</p>
+    <div class="row mt">
+      <div class="field" style="flex:0 0 116px;margin-bottom:0"><label>Thời gian</label>
         <input class="input" type="time" id="dcGio" value="${now}"></div>
-      <div class="field" style="flex:1"><label>Đến đâu</label>
-        <input class="input" id="dcNoi" placeholder="Vd: CH Quận 7"></div>
+      <div class="field" style="flex:1;margin-bottom:0"><label>Nơi làm việc</label>
+        <input class="input" id="dcNoi" placeholder="Vd: Xưởng bảo hiểm, CH Quận 7…"></div>
     </div>
-    <div class="field"><label>Lý do</label><input class="input" id="dcLd"></div>
-    <button class="btn btn-primary" id="dcOK">${ic('check')} Ghi nhận</button>`);
+    <div class="field mt"><label>Ghi chú (không bắt buộc)</label><input class="input" id="dcLd"></div>
+    <div class="row">
+      <button class="btn btn-quiet" id="dcMic">${ic('mic')} Nhờ trợ lý</button>
+      <button class="btn btn-primary" id="dcOK">${ic('check')} Ghi nhận</button>
+    </div>`);
+  $('#dcMic', sh).onclick = () => { closeSheet(); moGhiAm('checkin', { onSaved: () => renderHomNay(root) }); };
   $('#dcOK', sh).onclick = () => busy($('#dcOK', sh), async () => {
     try {
       await rpc('fn_them_di_chuyen', {

@@ -100,7 +100,7 @@ export async function renderKeHoach(root) {
     if (k) moChiTiet(k, reload);
   });
 
-  const now = box.querySelector('.hourline .now');
+  const now = box.querySelector('.timeplan .tp-now');
   if (now) setTimeout(() => now.scrollIntoView({ behavior: 'smooth', block: 'center' }), 260);
 }
 
@@ -124,59 +124,72 @@ function veItem(k) {
     </div>`;
 }
 
-// ---------- Timeline theo giờ ----------
+// ---------- Timeline thông minh: chỉ hiện MỐC THỰC TẾ ----------
+// Không liệt kê mọi giờ. Gom kế hoạch + di chuyển thành các mốc
+// theo thời gian, nối bằng một trục dọc. Chèn "Bây giờ" đúng vị trí.
 function veHourline(list, diChuyen, isToday) {
-  const gioIso = (iso) => Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(iso)));
-  const gioStr = (s) => Number(String(s).split(':')[0]);
-  const tatCa = [
-    ...list.map((k) => gioIso(k.thoi_gian)),
-    ...diChuyen.map((d) => gioStr(d.gio)),
-  ];
-  const min = Math.min(6, ...tatCa);
-  const max = Math.max(21, ...tatCa) + 1;
+  const phut = (iso) => {
+    const p = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' }).formatToParts(new Date(iso));
+    return Number(p.find((x) => x.type === 'hour').value) * 60 + Number(p.find((x) => x.type === 'minute').value);
+  };
+  const phutStr = (s) => { const [h, m] = String(s).split(':'); return Number(h) * 60 + Number(m || 0); };
+  const hhmm = (iso) => new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(iso));
 
-  let nowTop = null;
+  // Gộp thành 1 danh sách mốc
+  const moc = [
+    ...list.map((k) => {
+      const late = k.trang_thai === 'CHO' && new Date(k.thoi_gian) < new Date();
+      return { p: phut(k.thoi_gian), gio: hhmm(k.thoi_gian),
+        loai: k.trang_thai !== 'CHO' ? 'done' : (late ? 'late' : 'plan'),
+        ten: k.tieu_de, dia: k.dia_diem, id: k.id, icon: 'calendar' };
+    }),
+    ...diChuyen.map((d) => ({ p: phutStr(d.gio), gio: d.gio, loai: 'move',
+      ten: d.dia_diem, dia: d.ly_do, id: null, icon: 'car' })),
+  ].sort((a, b) => a.p - b.p);
+
+  if (!moc.length) return '';
+
+  // Chèn mốc "Bây giờ" đúng vị trí trong dòng chảy
+  let nowP = null;
   if (isToday) {
     const now = new Date();
-    const parts = new Intl.DateTimeFormat('en-GB', {
-      hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh',
-    }).formatToParts(now);
-    const h = Number(parts.find((p) => p.type === 'hour').value);
-    const m = Number(parts.find((p) => p.type === 'minute').value);
-    if (h >= min && h <= max) nowTop = (h - min + m / 60) * 46;
+    const p = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' }).formatToParts(now);
+    nowP = Number(p.find((x) => x.type === 'hour').value) * 60 + Number(p.find((x) => x.type === 'minute').value);
   }
 
-  const HH = (n) => String(n).padStart(2, '0') + ':00';
-  const gioBreakdown = (iso) =>
-    new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(iso));
+  const rows = [];
+  let daChen = false;
+  const chenNow = () => {
+    if (nowP === null || daChen) return;
+    const g = String(Math.floor(nowP / 60)).padStart(2, '0') + ':' + String(nowP % 60).padStart(2, '0');
+    rows.push(`<div class="tp-row tp-now"><div class="tp-time">${g}</div>
+      <div class="tp-line"></div>
+      <div class="tp-body"><span class="tp-now-lbl">Bây giờ</span></div></div>`);
+    daChen = true;
+  };
 
-  let out = '<div class="hourline">';
-  for (let h = min; h <= max; h++) {
-    const slotKH = list.filter((k) => gioIso(k.thoi_gian) === h);
-    const slotDC = diChuyen.filter((d) => gioStr(d.gio) === h);
-    out += `<div class="h-lbl">${HH(h)}</div><div class="h-body">`;
-    slotKH.forEach((k) => {
-      const late = k.trang_thai === 'CHO' && new Date(k.thoi_gian) < new Date();
-      const cls = k.trang_thai !== 'CHO' ? 'done' : (late ? 'late' : '');
-      out += `<div class="plan-chip ${cls}" data-open="${k.id}">
-        <span class="p-time">${gioBreakdown(k.thoi_gian)}</span>
-        <span class="p-name">${esc(k.tieu_de)}</span>
-      </div>`;
-    });
-    slotDC.forEach((d) => {
-      out += `<div class="plan-chip move">
-        ${ic('car')}<span class="p-time">${esc(d.gio)}</span>
-        <span class="p-name">${esc(d.dia_diem)}</span>
-      </div>`;
-    });
-    out += '</div>';
-  }
-  if (nowTop !== null) {
-    const nowGio = new Intl.DateTimeFormat('vi-VN', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
-    out += `<div class="now" style="top: ${nowTop}px"><span class="now-lbl">${nowGio}</span></div>`;
-  }
-  out += '</div>';
-  return out;
+  moc.forEach((m) => {
+    if (nowP !== null && m.p > nowP) chenNow();
+    const openAttr = m.id ? `data-open="${m.id}"` : '';
+    rows.push(`<div class="tp-row" ${openAttr} ${m.id ? 'style="cursor:pointer"' : ''}>
+      <div class="tp-time">${esc(m.gio)}</div>
+      <div class="tp-line"><span class="tp-dot ${m.loai}"></span></div>
+      <div class="tp-body">
+        <div class="tp-card ${m.loai}">
+          ${ic(m.icon)}
+          <div class="tp-main">
+            <div class="tp-name">${esc(m.ten)}</div>
+            ${m.dia ? `<div class="tp-sub">${esc(m.dia)}</div>` : ''}
+          </div>
+          ${m.loai === 'done' ? `<span class="tp-flag">${ic('check')}</span>`
+            : m.loai === 'late' ? `<span class="tp-flag late">Trễ</span>` : ''}
+        </div>
+      </div>
+    </div>`);
+  });
+  chenNow(); // nếu giờ hiện tại muộn hơn mọi mốc
+
+  return `<div class="timeplan">${rows.join('')}</div>`;
 }
 
 // ---------- Sheet chi tiết ----------

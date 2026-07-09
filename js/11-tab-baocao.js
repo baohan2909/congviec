@@ -2,7 +2,7 @@
 // CÔNG VIỆC — 11-tab-baocao.js
 // ============================================================
 import { rpc, phien, nenAnh, uploadAnh, anhURL, loiNguoi } from './01-supabase.js';
-import { $, $$, ic, esc, nl2html, toast, openSheet, busy, fmtNgay, fmtGio, fmtNgayGio, homNayVN } from './03-ui.js';
+import { $, $$, ic, esc, nl2html, mdMini, toast, openSheet, busy, fmtNgay, fmtGio, fmtNgayGio, homNayVN } from './03-ui.js';
 import { MC } from './00-config.js';
 import { moGhiAm, xuLyVoiTroLy } from './05-troly.js';
 
@@ -163,7 +163,7 @@ async function veLichSu(root) {
     openSheet(`
       <h3>${ic('file')} Báo cáo ${fmtNgay(b.ngay)} · ${fmtGio(b.gui_luc)}</h3>
       ${b.co_van_de ? `<span class="badge badge-danger">${ic('alert')} Có vấn đề phát sinh</span>` : ''}
-      <div class="pv-block">${nl2html(b.noi_dung)}</div>
+      <div class="pv-block"><div class="md-doc">${mdMini(b.noi_dung)}</div></div>
       ${b.anh?.length ? `<div class="photo-grid">${b.anh.map((a) =>
         `<div class="ph"><img src="${anhURL(a.storage_path)}" loading="lazy" alt=""></div>`).join('')}</div>` : ''}
       ${b.audio_path ? `<audio class="mt" controls style="width:100%" src="${anhURL(b.audio_path)}"></audio>` : ''}

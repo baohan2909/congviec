@@ -10,6 +10,7 @@ import { renderKeHoach } from './12-tab-kehoach.js';
 import { renderTaiKhoan } from './13-tab-taikhoan.js';
 import { renderCongViec } from './15-tab-congviec.js';
 import { renderQuanTri } from './14-tab-quantri.js';
+import { kiemTraGiongNoiChoXuLy } from './05-troly.js';
 
 // ---------- Theme (sáng mặc định) ----------
 const theme = localStorage.getItem('cv_theme')
@@ -51,6 +52,7 @@ function startApp() {
     const t = tabs.find((x) => x.id === id);
     if (!t) return;
     current = id;
+    window.cvTabHienTai = id;
     rung(8);
     $$('#tabbar .tab').forEach((b) => b.classList.toggle('active', b.dataset.id === id));
     const paint = () => t.render($('#tabContent'));
@@ -61,6 +63,9 @@ function startApp() {
 
   $$('#tabbar .tab').forEach((b) => b.onclick = () => goTab(b.dataset.id));
   goTab('homnay');
+
+  // An toàn giọng nói: còn đoạn nào chưa xử lý xong thì mời khôi phục
+  setTimeout(() => kiemTraGiongNoiChoXuLy(), 900);
 }
 
 // ---------- Vào app ----------
