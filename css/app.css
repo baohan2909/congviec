@@ -903,3 +903,10 @@ html[data-theme="dark"] .login-title {
   font-size: 12.5px; font-weight: 600; color: var(--acc-ink); padding: 6px 12px; border-radius: 999px;
   display: inline-flex; align-items: center; gap: 6px; }
 .ver-check:active { transform: scale(.95); background: var(--surface-2); }
+
+/* iOS: input giờ/ngày có bề rộng nội tại lớn → ép về khung, không lố */
+input[type="time"].input, input[type="date"].input, input[type="datetime-local"].input {
+  width: 100%; max-width: 100%; min-width: 0;
+  -webkit-appearance: none; appearance: none;
+  display: block; box-sizing: border-box;
+}

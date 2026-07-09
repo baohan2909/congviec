@@ -39,7 +39,7 @@ export async function renderHomNay(root) {
     <div class="card" id="hnBaoCao"></div>
     <div class="card mb0" id="hnKeHoach"></div>`;
 
-  $('#hnMic', root).onclick = () => { rung(); moGhiAm('troly', { onSaved: () => renderHomNay(root) }); };
+  $('#hnMic', root).onclick = () => { rung(); moGhiAm('troly', { onSaved: () => renderHomNay(root), contextHtml: ctxKeHoachHomNay() }); };
 
   veNhac(root); veCheckin(root); veBaoCao(root); veKeHoach(root);
 }
@@ -183,7 +183,7 @@ function formChonNoi(root) {
           ${ic(t.icon)} ${esc(t.ten)}
         </button>`).join('')}
     </div>
-    <button class="btn btn-danger mt" id="cnXoa">${ic('x')} Xóa chấm công hôm nay</button>`);
+    <button class="btn btn-danger mt" id="cnXoa">${ic('x')} Xóa vị trí này</button>`);
   $$('.status-btn', sh).forEach((b) => b.onclick = () => {
     rung();
     if (b.dataset.can === 'true') { closeSheet(); hoiDiaDiem(b.dataset.loai, root); }
@@ -192,7 +192,7 @@ function formChonNoi(root) {
   $('#cnXoa', sh).onclick = () => busy($('#cnXoa', sh), async () => {
     try {
       await rpc('fn_xoa_checkin', {});
-      closeSheet(); toast('Em đã xóa chấm công hôm nay ạ.'); renderHomNay(root);
+      closeSheet(); toast('Em đã xóa vị trí này ạ.'); renderHomNay(root);
     } catch (e) { toast(loiNguoi(e), 'err'); }
   });
 }
@@ -255,6 +255,18 @@ function formDiChuyen(root) {
 }
 
 // ---------- Báo cáo hôm nay ----------
+// Danh sách kế hoạch hôm nay hiển thị trong màn ghi âm (vừa nhìn vừa nói)
+function ctxKeHoachHomNay() {
+  const ds = D?.ke_hoach || [];
+  if (!ds.length) return '';
+  return `
+    <div class="rec-ctx-title">${ic('calendar')} Kế hoạch hôm nay (${ds.length})</div>
+    ${ds.map((k, i) => `<div class="rec-ctx-item">
+      <b>${i + 1}.</b> <span>${esc(k.tieu_de)}${k.dia_diem ? ' · ' + esc(k.dia_diem) : ''}</span>
+      <span class="mono">${fmtGio(k.thoi_gian)}</span>
+    </div>`).join('')}`;
+}
+
 function veBaoCao(root) {
   const box = $('#hnBaoCao', root);
   if (D.bao_cao) {

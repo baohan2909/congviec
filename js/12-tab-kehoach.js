@@ -130,10 +130,9 @@ export async function renderKeHoach(root) {
 
 // ---------- Item trong list ----------
 function veItem(k) {
-  const qua = new Date(k.thoi_gian) < new Date();
   return `
     <div class="list-item" data-open="${k.id}" style="cursor:pointer">
-      <span class="badge ${qua ? 'badge-danger' : 'badge-gold'} mono">${fmtGio(k.thoi_gian)}</span>
+      <span class="badge badge-gold mono">${fmtGio(k.thoi_gian)}</span>
       <div class="list-main">
         <div class="list-title">${esc(k.tieu_de)}</div>
         <div class="list-sub">${k.dia_diem ? esc(k.dia_diem) + ' · ' : ''}nhắc trước ${k.nhac_truoc_phut}′</div>
@@ -166,9 +165,8 @@ function veHourline(list, diChuyen, isToday) {
   // Gộp thành 1 danh sách mốc
   const moc = [
     ...list.map((k) => {
-      const late = new Date(k.thoi_gian) < new Date();
       return { p: phut(k.thoi_gian), gio: hhmm(k.thoi_gian),
-        loai: late ? 'late' : 'plan',
+        loai: 'plan',
         ten: k.tieu_de, dia: k.dia_diem, id: k.id, icon: 'calendar' };
     }),
     ...diChuyen.map((d) => ({ p: phutStr(d.gio), gio: d.gio, loai: 'move',
@@ -209,8 +207,6 @@ function veHourline(list, diChuyen, isToday) {
             <div class="tp-name">${esc(m.ten)}</div>
             ${m.dia ? `<div class="tp-sub">${esc(m.dia)}</div>` : ''}
           </div>
-          ${m.loai === 'done' ? `<span class="tp-flag">${ic('check')}</span>`
-            : m.loai === 'late' ? `<span class="tp-flag late">Trễ</span>` : ''}
         </div>
       </div>
     </div>`);
@@ -240,20 +236,10 @@ function moChiTiet(k, reload) {
     <div class="field"><label>Địa điểm</label>
       <input class="input" id="ktDd" value="${esc(k.dia_diem || '')}"></div>
     <button class="btn btn-primary" id="ktLuu">${ic('edit')} Lưu sửa đổi</button>
-    <button class="btn btn-quiet mt" id="ktLich">${ic('bell')} Thêm vào Lịch (báo thức reo)</button>
-    <button class="btn btn-danger mt" id="ktHuy">${ic('x')} Xóa kế hoạch</button>`);
+    <button class="btn btn-danger mt" id="ktHuy">${ic('x')} Xóa kế hoạch</button>
+    <p class="muted" style="font-size:12.5px;margin:10px 0 0;text-align:center">${ic('bell', 'ic-xs')} Nhắc tự động đã đặt theo "Nhắc trước" — không cần thao tác thêm ạ.</p>`);
 
   const dong = () => { closeSheet(); reload(); };
-
-  $('#ktLich', sh) && ($('#ktLich', sh).onclick = () => {
-    taoICS({
-      tieu_de: $('#ktTd', sh).value.trim() || k.tieu_de,
-      thoi_gian: new Date($('#ktTg', sh).value || k.thoi_gian).toISOString(),
-      dia_diem: $('#ktDd', sh).value.trim() || k.dia_diem || '',
-      nhac_truoc_phut: Number($('#ktNh', sh).value ?? k.nhac_truoc_phut ?? 30),
-    });
-    toast('Em đã tạo file lịch — mở lên rồi bấm "Thêm vào Lịch" để iPhone reo đúng giờ ạ.', 'ok', 5200);
-  });
 
   $('#ktLuu', sh) && ($('#ktLuu', sh).onclick = () => busy($('#ktLuu', sh), async () => {
     const td = $('#ktTd', sh).value.trim(), tg = $('#ktTg', sh).value;
@@ -315,28 +301,3 @@ function formThem(reload) {
   });
 }
 
-// ---------- Xuất file .ics để thêm vào Lịch iPhone (báo thức có âm) ----------
-function taoICS({ tieu_de, thoi_gian, dia_diem = '', nhac_truoc_phut = 30, mo_ta = '' }) {
-  const dt = (iso) => new Date(iso).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-  const start = dt(thoi_gian);
-  const end = dt(new Date(new Date(thoi_gian).getTime() + 30 * 60000).toISOString());
-  const uid = 'cv-' + Date.now() + '@congviec';
-  const esc = (s) => String(s || '').replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n');
-  const ics = [
-    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Cong viec//NonSon//VI', 'CALSCALE:GREGORIAN',
-    'BEGIN:VEVENT', `UID:${uid}`, `DTSTAMP:${dt(new Date().toISOString())}`,
-    `DTSTART:${start}`, `DTEND:${end}`, `SUMMARY:${esc(tieu_de)}`,
-    dia_diem ? `LOCATION:${esc(dia_diem)}` : '',
-    mo_ta ? `DESCRIPTION:${esc(mo_ta)}` : '',
-    'BEGIN:VALARM', `TRIGGER:-PT${nhac_truoc_phut || 0}M`, 'ACTION:DISPLAY',
-    `DESCRIPTION:${esc(tieu_de)}`, 'END:VALARM',
-    'END:VEVENT', 'END:VCALENDAR',
-  ].filter(Boolean).join('\r\n');
-  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = (tieu_de || 'nhac-viec').replace(/[^\p{L}\d]+/gu, '_').slice(0, 40) + '.ics';
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
-}

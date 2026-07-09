@@ -7,10 +7,11 @@ import { MC } from './00-config.js';
 import { moGhiAm, xuLyVoiTroLy } from './05-troly.js';
 
 let photos = []; // { blob, url }
-let khChoCount = 0;
 let khChoDs = [];
+let _bcHomNay;   // báo cáo hôm nay (nạp bởi veKeHoachHomNay)
 
 export async function renderBaoCao(root) {
+  _bcHomNay = undefined;
   root.innerHTML = `
     <div class="page-head">
       <div><h1 class="page-title">Báo cáo</h1>
@@ -55,9 +56,8 @@ export async function renderBaoCao(root) {
       <div id="bcHist"><div class="skeleton" style="height:70px"></div></div>
     </div>`;
 
+  // ── B1. GẮN TOÀN BỘ NÚT TRƯỚC (đồng bộ) — lỗi dữ liệu không được giết nút ──
   vePhotos(root);
-  veKeHoachCho(root);
-  veBoSung(root, D);
 
   const reload = () => { photos = []; renderBaoCao(root); };
   const getAnh = async () => {
@@ -69,16 +69,10 @@ export async function renderBaoCao(root) {
   };
 
   $('#bcTroly', root).onclick = () => {
-    const ctxHtml = khChoDs.length ? `
-      <div class="rec-ctx-title">${ic('calendar')} Kế hoạch cần phản hồi (${khChoDs.length})</div>
-      ${khChoDs.map((k, idx) => `<div class="rec-ctx-item">
-        <b>${idx + 1}.</b> <span>${esc(k.tieu_de)}</span>
-        <span class="mono">${fmtGio(k.thoi_gian)}</span>
-      </div>`).join('')}` : '';
-    // Nói xong → tự chuẩn hóa & gửi (mode 'baocao' đưa thẳng vào AI)
+    // Nói xong → tự chuẩn hóa & gửi; overlay hiện KẾ HOẠCH HÔM NAY để nhìn mà báo cáo
     moGhiAm('baocao', {
       startText: ($('#bcText', root)?.value || ''),
-      getAnh, onSaved: reload, contextHtml: ctxHtml,
+      getAnh, onSaved: reload, contextHtml: ctxKeHoachHtml(),
     });
   };
 
@@ -113,27 +107,44 @@ export async function renderBaoCao(root) {
     } catch (e) { toast(loiNguoi(e), 'err'); }
   });
 
+  // ── B2. NẠP DỮ LIỆU SAU (bất đồng bộ, có rào lỗi từng phần) ──
+  veKeHoachHomNay(root);   // bảng kế hoạch hôm nay để nhìn mà báo cáo
+  veBoSung(root);          // khung bổ sung nếu hôm nay đã gửi báo cáo
   veLichSu(root);
 }
 
-async function veKeHoachCho(root) {
-  khChoCount = 0;
+// Bảng KẾ HOẠCH HÔM NAY trong tab Báo cáo — nhìn vào đây để báo cáo từng mục
+async function veKeHoachHomNay(root) {
+  khChoDs = [];
   try {
-    const ds = await rpc('fn_ke_hoach_cho_phan_hoi');
-    if (!ds?.length) return;
-    khChoCount = ds.length;
+    const hn = await rpc('fn_lay_hom_nay');
+    _bcHomNay = hn?.bao_cao || null;
+    const ds = hn?.ke_hoach || [];
+    if (!ds.length) return;
     khChoDs = ds;
     const card = $('#bcKeHoach', root);
+    if (!card) return;
     card.style.display = '';
-    $('#bcKhList', root).innerHTML = ds.map((k) => `
+    $('#bcKhList', root).innerHTML = ds.map((k, i) => `
       <div class="list-item">
-        <span class="badge badge-gold mono">${gioThongMinh(k.thoi_gian)}</span>
+        <span class="badge badge-gold mono">${fmtGio(k.thoi_gian)}</span>
         <div class="list-main">
           <div class="list-title">${esc(k.tieu_de)}</div>
           ${k.dia_diem ? `<div class="list-sub">${esc(k.dia_diem)}</div>` : ''}
         </div>
       </div>`).join('');
   } catch {}
+}
+
+// HTML kế hoạch hôm nay hiển thị trong màn ghi âm (cuộn được, vừa nhìn vừa nói)
+function ctxKeHoachHtml() {
+  if (!khChoDs.length) return '';
+  return `
+    <div class="rec-ctx-title">${ic('calendar')} Kế hoạch hôm nay (${khChoDs.length}) — nhìn vào để báo cáo ạ</div>
+    ${khChoDs.map((k, idx) => `<div class="rec-ctx-item">
+      <b>${idx + 1}.</b> <span>${esc(k.tieu_de)}${k.dia_diem ? ' · ' + esc(k.dia_diem) : ''}</span>
+      <span class="mono">${fmtGio(k.thoi_gian)}</span>
+    </div>`).join('')}`;
 }
 
 function vePhotos(root) {
@@ -185,14 +196,16 @@ async function veLichSu(root) {
   });
 }
 
-function veBoSung(root, D) {
-  const bc = D?.bao_cao;
+async function veBoSung(root) {
+  // Chờ veKeHoachHomNay nạp _bcHomNay (cùng 1 lần gọi fn_lay_hom_nay); thử lại nhẹ
+  for (let i = 0; i < 20 && _bcHomNay === undefined; i++) await new Promise((r) => setTimeout(r, 150));
+  const bc = _bcHomNay;
   if (!bc?.id) return;
   const card = $('#bcBoSung', root);
+  if (!card) return;
   card.style.display = '';
   $('#bcBSMic', root).onclick = () =>
-    import('./05-troly.js').then(({ moGhiAm }) =>
-      moGhiAm('troly', { onSaved: () => renderBaoCao(root) }));
+    moGhiAm('troly', { onSaved: () => renderBaoCao(root) });
   $('#bcBSGui', root).onclick = () => busy($('#bcBSGui', root), async () => {
     const t = $('#bcBSText', root).value.trim();
     if (!t) { toast('Anh/chị cho em xin nội dung bổ sung ạ.', 'err'); return; }
