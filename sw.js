@@ -2,7 +2,7 @@
 // CÔNG VIỆC — Service Worker
 // ⚠️ VERSION BUMP: đổi cùng SYS.version (00-config.js) + app_settings
 // ============================================================
-const CACHE_VERSION = 'congviec-0.2.6';
+const CACHE_VERSION = 'congviec-0.2.7';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './css/app.css',
   './js/00-config.js', './js/01-supabase.js', './js/02-auth.js',
@@ -13,7 +13,11 @@ const SHELL = [
 ];
 
 self.addEventListener('install', (e) => {
-  e.waitUntil(caches.open(CACHE_VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  // KHÔNG tự skipWaiting — chờ người dùng bấm "Cập nhật" để không reload đột ngột
+  e.waitUntil(caches.open(CACHE_VERSION).then((c) => c.addAll(SHELL)));
+});
+self.addEventListener('message', (e) => {
+  if (e.data === 'skipWaiting') self.skipWaiting();
 });
 self.addEventListener('activate', (e) => {
   e.waitUntil(

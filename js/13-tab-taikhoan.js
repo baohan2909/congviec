@@ -65,7 +65,10 @@ export function renderTaiKhoan(root) {
     </div>` : ''}
 
     <button class="btn btn-danger" id="tkOut">${ic('out')} Đăng xuất</button>
-    <p class="muted mono mt" style="text-align:center;font-size:12px">Công việc · v${SYS.version}</p>`;
+    <div class="ver-row">
+      <span class="muted mono">Công việc · v${SYS.version}</span>
+      <button class="ver-check" id="tkCapNhat">${ic('sparkle', 'ic-xs')} Kiểm tra cập nhật</button>
+    </div>`;
 
   if (nd.vai_tro === 'ADMIN') {
     $('#tkTaoTK', root).onclick = () => formTaoTaiKhoan();
@@ -135,6 +138,12 @@ export function renderTaiKhoan(root) {
     $('#outNo', sh).onclick = closeSheet;
     $('#outYes', sh).onclick = () => busy($('#outYes', sh), dangXuat);
   };
+
+  $('#tkCapNhat', root) && ($('#tkCapNhat', root).onclick = () => busy($('#tkCapNhat', root), async () => {
+    if (!window.cvKiemTraCapNhat) { toast('Tính năng cập nhật chưa sẵn sàng ạ.', 'err'); return; }
+    const coMoi = await window.cvKiemTraCapNhat();
+    if (!coMoi) toast('Anh/chị đang dùng bản mới nhất rồi ạ.');
+  }));
 }
 
 

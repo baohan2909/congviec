@@ -24,9 +24,54 @@ addEventListener('pointerdown', (e) => {
   if (b && !b.disabled) rung(9);
 }, { passive: true });
 
-// ---------- Service worker ----------
+// ---------- Service worker + tự phát hiện bản mới ----------
 if ('serviceWorker' in navigator) {
-  addEventListener('load', () => navigator.serviceWorker.register('./sw.js').catch(() => {}));
+  let daReload = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (daReload) return; daReload = true; location.reload();
+  });
+  addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('./sw.js');
+      // Đã có bản mới đang chờ (mở lại app) → mời cập nhật ngay
+      if (reg.waiting && navigator.serviceWorker.controller) banerCapNhat(reg);
+      // Bản mới vừa tải xong trong lúc đang dùng
+      reg.addEventListener('updatefound', () => {
+        const nw = reg.installing;
+        if (!nw) return;
+        nw.addEventListener('statechange', () => {
+          if (nw.state === 'installed' && navigator.serviceWorker.controller) banerCapNhat(reg);
+        });
+      });
+      // Chủ động kiểm tra cập nhật mỗi lần app được mở lại
+      document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reg.update().catch(() => {});
+      });
+      window.cvKiemTraCapNhat = async () => {
+        await reg.update().catch(() => {});
+        if (reg.waiting) { banerCapNhat(reg); return true; }
+        return false;
+      };
+    } catch {}
+  });
+}
+
+// Banner "Có bản mới" — bấm để nạp bản mới ngay
+function banerCapNhat(reg) {
+  if ($('#cvUpdate')) return;
+  const el = document.createElement('div');
+  el.id = 'cvUpdate';
+  el.className = 'cv-update';
+  el.innerHTML = `
+    <span>${ic('sparkle')} Đã có bản mới của ứng dụng</span>
+    <button id="cvUpdateBtn">Cập nhật</button>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  $('#cvUpdateBtn', el).onclick = () => {
+    $('#cvUpdateBtn', el).textContent = 'Đang cập nhật…';
+    if (reg.waiting) reg.waiting.postMessage('skipWaiting');
+    else location.reload();
+  };
 }
 
 // ---------- Tabs ----------

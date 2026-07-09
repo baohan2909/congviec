@@ -110,19 +110,13 @@ function veCheckin(root) {
     </div>
     <hr class="hr">
     <div class="timeplan wl-plan">
-      ${moc.map((m, i) => `
+      ${moc.map((m) => `
         <div class="tp-row ${m === mocHienTai ? 'tp-now' : ''}">
           <div class="tp-time">${esc(m.gio || '—')}</div>
           <div class="tp-line"><span class="tp-dot ${m === mocHienTai ? 'now' : (m.goc ? 'done' : '')}"></span></div>
           <div class="tp-body">
-            <div class="tp-card">
-              <div class="tp-place">${esc(m.noi)}</div>
-              <div class="tp-tags">
-                ${m.goc ? '<span class="badge badge-gold" style="font-size:10px">bắt đầu</span>' : ''}
-                ${m === mocHienTai ? '<span class="badge badge-acc" style="font-size:10px">hiện tại</span>' : ''}
-              </div>
-            </div>
-            ${m.goc ? '' : `<button class="wl-edit" data-edit="${m.id}" aria-label="Sửa">${ic('edit', 'ic')}</button>`}
+            <div class="tp-card"><div class="tp-place">${esc(m.noi)}</div></div>
+            <button class="wl-edit" data-edit="${m.goc ? 'goc' : m.id}" aria-label="Sửa">${ic('edit', 'ic')}</button>
           </div>
         </div>`).join('')}
     </div>
@@ -139,6 +133,7 @@ function veCheckin(root) {
   $('#ciThem', box).onclick = () => formDiChuyen(root);
   $('#wnLoai', box) && ($('#wnLoai', box).onclick = () => formChonNoi(root));
   $$('.wl-edit', box).forEach((b) => b.onclick = () => {
+    if (b.dataset.edit === 'goc') { formChonNoi(root); return; }   // mốc bắt đầu = đổi nơi làm việc chính
     const m = moc.find((x) => String(x.id) === b.dataset.edit);
     if (m) formSuaNoi(m, root);
   });
@@ -151,10 +146,10 @@ function formSuaNoi(m, root) {
   const tg = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
   const sh = openSheet(`
     <h3>${ic('edit')} Sửa nơi làm việc</h3>
-    <div class="row" style="align-items:flex-end">
-      <div class="field" style="flex:0 0 148px;min-width:0"><label>Thời gian</label>
+    <div class="wl-form-row wide">
+      <div class="field"><label>Thời gian</label>
         <input class="input" type="datetime-local" id="snTg" value="${tg}"></div>
-      <div class="field" style="flex:1;min-width:0"><label>Địa điểm</label>
+      <div class="field"><label>Địa điểm</label>
         <input class="input" id="snNoi" value="${esc(m.noi)}"></div>
     </div>
     <button class="btn btn-primary mt" id="snOK">${ic('check')} Lưu</button>
@@ -223,10 +218,10 @@ function formDiChuyen(root) {
   const sh = openSheet(`
     <h3>${ic('pin')} Thêm nơi làm việc</h3>
     <p class="muted mb0" style="font-size:14px">Nhập giờ và nơi làm việc, hoặc bấm mic để trợ lý ghi giúp ạ.</p>
-    <div class="row mt" style="align-items:flex-end">
-      <div class="field" style="flex:0 0 104px;min-width:0;margin-bottom:12px"><label>Giờ</label>
+    <div class="wl-form-row mt">
+      <div class="field"><label>Giờ</label>
         <input class="input" type="time" id="dcGio" value="${now}"></div>
-      <div class="field" style="flex:1;min-width:0;margin-bottom:12px"><label>Nơi làm việc</label>
+      <div class="field"><label>Nơi làm việc</label>
         <input class="input" id="dcNoi" placeholder="Vd: Xưởng bảo hiểm…"></div>
     </div>
     <div class="field"><label>Ghi chú (không bắt buộc)</label><input class="input" id="dcLd"></div>
