@@ -61,7 +61,8 @@ async function veTongQuan(box) {
   const tenTag = { VAN_PHONG: 'Văn phòng', XUONG_BH: 'Xưởng BH', CONG_TAC: 'Công tác ngoài', LAM_O_NHA: 'Tại nhà', NGHI_PHEP: 'Nghỉ phép' };
   // Thẻ nhân sự GỌN — 1 dòng, có tag vị trí, bấm để xem đầy đủ
   const veNguoi = (n, congTac = false) => {
-    const hoatDong = !!n.loai || !!khTheoNguoi[n.ma_nv];
+    const coKH = !!khTheoNguoi[n.ma_nv];
+    const hoatDong = !!n.loai || coKH;
     return `
     <div class="person-row ${hoatDong ? 'person-active' : ''}" data-nv="${n.ma_nv}">
       <div class="avatar sm">${initials(n.ho_ten)}</div>
@@ -69,10 +70,12 @@ async function veTongQuan(box) {
         <div class="list-title" style="font-size:14px">${esc(n.ho_ten)}</div>
         <div class="list-sub" style="font-size:12px">${
           congTac && n.dia_diem ? `${ic('pin')} ${esc(n.dia_diem)}` : esc(n.ten_pb || '—')
-        }${n.di_chuyen?.length ? ` · ${n.di_chuyen.length} chặng` : ''}${khTheoNguoi[n.ma_nv] ? ` · ${khTheoNguoi[n.ma_nv].ds.length} kế hoạch` : ''}</div>
+        }${coKH ? ` · ${khTheoNguoi[n.ma_nv].ds.length} kế hoạch` : ''}</div>
       </div>
-      ${n.loai ? `<span class="badge badge-acc" style="font-size:11px">${esc(tenTag[n.loai] || '')}</span>` : ''}
-      <span class="dot-bc ${hoatDong ? 'act' : (n.da_bao_cao ? 'ok' : 'no')}" title="${hoatDong ? 'Đang hoạt động' : 'Chưa cập nhật'}"></span>
+      <div class="ns-badges">
+        <span class="badge ${coKH ? 'badge-acc' : 'badge-warn'}" style="font-size:10.5px">${coKH ? 'Có KH' : 'Chưa KH'}</span>
+        <span class="badge ${n.da_bao_cao ? 'badge-acc' : 'badge-warn'}" style="font-size:10.5px">${n.da_bao_cao ? 'Đã BC' : 'Chưa BC'}</span>
+      </div>
     </div>`;
   };
 
@@ -107,14 +110,15 @@ async function veTongQuan(box) {
         <span class="hd-date">Ngày ${homNayStr}</span></div>
       <div class="tag-count">
         <span class="tagc on" data-f="all">Tất cả <b>${ns.length}</b></span>
-        ${nhomCoNguoi.map((g) => `<span class="tagc" data-f="${g.key}">${ic(g.icon)} ${esc(g.tag)} <b>${g.ds.length}</b></span>`).join('')}
-        ${chua.length ? `<span class="tagc miss" data-f="chua">${ic('alert')} Chưa cập nhật <b>${chua.length}</b></span>` : ''}
+        <span class="tagc miss" data-f="chua_bc">${ic('alert')} Chưa báo cáo <b>${ns.filter((n) => !n.da_bao_cao).length}</b></span>
+        <span class="tagc miss" data-f="chua_kh">${ic('calendar')} Chưa kế hoạch <b>${ns.filter((n) => !khTheoNguoi[n.ma_nv]).length}</b></span>
       </div>
       <div id="tqNguoi" class="mt">
-        ${ns.map((n) => ({ n, grp: n.loai || 'chua', congTac: n.loai === 'CONG_TAC',
+        ${ns.map((n) => ({ n, congTac: n.loai === 'CONG_TAC',
+            bc: n.da_bao_cao ? 1 : 0, kh: khTheoNguoi[n.ma_nv] ? 1 : 0,
             hd: (!!n.loai || !!khTheoNguoi[n.ma_nv]) ? 1 : 0 }))
           .sort((a, b) => (b.hd - a.hd) || a.n.ho_ten.localeCompare(b.n.ho_ten, 'vi'))
-          .map((x) => `<div class="loc-row" data-grp="${x.grp}">${veNguoi(x.n, x.congTac)}</div>`).join('')}
+          .map((x) => `<div class="loc-row" data-dbc="${x.bc}" data-kh="${x.kh}">${veNguoi(x.n, x.congTac)}</div>`).join('')}
       </div>
     </div>
 
@@ -152,7 +156,12 @@ async function veTongQuan(box) {
   $$('.tag-count .tagc', box).forEach((b) => b.onclick = () => {
     $$('.tag-count .tagc', box).forEach((x) => x.classList.toggle('on', x === b));
     const f = b.dataset.f;
-    $$('#tqNguoi .loc-row', box).forEach((g) => g.classList.toggle('hidden', f !== 'all' && g.dataset.grp !== f));
+    $$('#tqNguoi .loc-row', box).forEach((g) => {
+      let hien = true;
+      if (f === 'chua_bc') hien = g.dataset.dbc === '0';
+      else if (f === 'chua_kh') hien = g.dataset.kh === '0';
+      g.classList.toggle('hidden', !hien);
+    });
   });
   // Bấm người → thông tin đầy đủ
   $$('.person-row[data-nv]', box).forEach((el) => el.onclick = () => {

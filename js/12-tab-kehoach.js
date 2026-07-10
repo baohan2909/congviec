@@ -240,10 +240,22 @@ export function moChiTiet(k, reload) {
     <div class="field"><label>Địa điểm</label>
       <input class="input" id="ktDd" value="${esc(k.dia_diem || '')}"></div>
     <button class="btn btn-primary" id="ktLuu">${ic('edit')} Lưu sửa đổi</button>
+    <button class="btn btn-quiet mt" id="ktLich">${ic('bell')} Cài vào Lịch iPhone (reo báo thức)</button>
     <button class="btn btn-danger mt" id="ktHuy">${ic('x')} Xóa kế hoạch</button>
-    <p class="muted" style="font-size:12.5px;margin:10px 0 0;text-align:center">${ic('bell', 'ic-xs')} Nhắc tự động đã đặt theo "Nhắc trước" — không cần thao tác thêm ạ.</p>`);
+    <p class="muted" style="font-size:12.5px;margin:10px 0 0;text-align:center">${ic('bell', 'ic-xs')} Nhắc trong app đã đặt tự động. Muốn iPhone REO to như báo thức thì bấm "Cài vào Lịch iPhone" ạ.</p>`);
 
   const dong = () => { closeSheet(); reload(); };
+
+  $('#ktLich', sh) && ($('#ktLich', sh).onclick = () => {
+    const ngay = $('#ktNgay', sh).value, gio = $('#ktGio', sh).value;
+    taoICS({
+      tieu_de: $('#ktTd', sh).value.trim() || k.tieu_de,
+      thoi_gian: new Date(`${ngay}T${gio}`).toISOString(),
+      dia_diem: $('#ktDd', sh).value.trim() || k.dia_diem || '',
+      nhac_truoc_phut: Number($('#ktNh', sh).value ?? 0),
+    });
+    toast('Em đã tạo file lịch — bấm "Thêm tất cả" để iPhone lưu vào Lịch và reo đúng giờ ạ.', 'ok', 5200);
+  });
 
   $('#ktLuu', sh) && ($('#ktLuu', sh).onclick = () => busy($('#ktLuu', sh), async () => {
     const td = $('#ktTd', sh).value.trim();
@@ -306,3 +318,29 @@ function formThem(reload) {
   });
 }
 
+
+// ---------- Xuất file .ics (cài vào Lịch iPhone, reo báo thức đúng giờ) ----------
+function taoICS({ tieu_de, thoi_gian, dia_diem = '', nhac_truoc_phut = 0, mo_ta = '' }) {
+  const dt = (d) => new Date(d).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  const start = new Date(thoi_gian);
+  const end = new Date(start.getTime() + 30 * 60000);
+  const uid = 'cv-' + start.getTime() + '@nonson';
+  const esc2 = (s) => String(s || '').replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n');
+  const ics = [
+    'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Cong viec//NonSon//VI', 'CALSCALE:GREGORIAN',
+    'BEGIN:VEVENT', `UID:${uid}`, `DTSTAMP:${dt(new Date())}`,
+    `DTSTART:${dt(start)}`, `DTEND:${dt(end)}`,
+    `SUMMARY:${esc2(tieu_de)}`,
+    dia_diem ? `LOCATION:${esc2(dia_diem)}` : '',
+    mo_ta ? `DESCRIPTION:${esc2(mo_ta)}` : '',
+    'BEGIN:VALARM', `TRIGGER:-PT${Number(nhac_truoc_phut) || 0}M`, 'ACTION:DISPLAY',
+    `DESCRIPTION:${esc2(tieu_de)}`, 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR',
+  ].filter(Boolean).join('\r\n');
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `${(tieu_de || 'ke-hoach').slice(0, 40)}.ics`;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 1000);
+}

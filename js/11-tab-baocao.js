@@ -125,14 +125,28 @@ async function veKeHoachHomNay(root) {
     const card = $('#bcKeHoach', root);
     if (!card) return;
     card.style.display = '';
-    $('#bcKhList', root).innerHTML = ds.map((k, i) => `
-      <div class="list-item">
+    // Đối chiếu: mục nào đã được nhắc trong báo cáo hôm nay → đánh dấu đã phản hồi
+    const bcText = (_bcHomNay?.noi_dung || '').toLowerCase();
+    const daPhanHoi = (k) => {
+      if (!bcText) return false;
+      const tu = k.tieu_de.toLowerCase().replace(/[.,–—-]/g, ' ').split(/\s+/).filter((w) => w.length >= 4);
+      const khop = tu.filter((w) => bcText.includes(w)).length;
+      return tu.length && khop / tu.length >= 0.5;   // ≥ nửa từ khóa xuất hiện
+    };
+    const soPh = ds.filter(daPhanHoi).length;
+    $('.card-title', card).innerHTML = `${ic('calendar')} Kế hoạch chờ phản hồi hôm nay${soPh ? ` <span class="badge badge-acc" style="font-size:11px">${soPh}/${ds.length} đã báo cáo</span>` : ''}`;
+    $('#bcKhList', root).innerHTML = ds.map((k) => {
+      const ph = daPhanHoi(k);
+      return `
+      <div class="kh-item ${ph ? 'kh-done' : ''}">
         <span class="badge badge-gold mono">${fmtGio(k.thoi_gian)}</span>
         <div class="list-main">
           <div class="list-title">${esc(k.tieu_de)}</div>
           ${k.dia_diem ? `<div class="list-sub">${esc(k.dia_diem)}</div>` : ''}
         </div>
-      </div>`).join('');
+        ${ph ? `<span class="kh-tick">${ic('check')}</span>` : ''}
+      </div>`;
+    }).join('');
   } catch {}
 }
 

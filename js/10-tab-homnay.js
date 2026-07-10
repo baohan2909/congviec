@@ -68,7 +68,7 @@ function chuanHoaNoi(s) {
   const d = String(s).toLowerCase();
   if (/(bảo hiểm|bao hiem)/.test(d)) return 'Xưởng bảo hiểm';
   if (/(hai bà trưng|hai ba trung|hbt)/.test(d)) return 'Cửa hàng Hai Bà Trưng';
-  if (/(văn phòng|van phong|nón vải|non vai|xưởng nón|xuong non|kho tổng|kho tong|kho vải|kho vai|dưới kho|duoi kho|xuống kho|xuong kho|\bkho\b|\bvp\b)/.test(d)) return 'Xưởng nón vải';
+  if (/(văn phòng|van phong|nón vải|non vai|xưởng nón|xuong non|kho tổng|kho tong|kho vải|kho vai|dưới kho|duoi kho|xuống kho|xuong kho|\bkho\b|\bvp\b)/.test(d)) return 'Văn phòng · Xưởng nón vải';
   return s; // địa điểm/đối tác khác giữ nguyên
 }
 
@@ -160,23 +160,24 @@ function veCheckin(root) {
 function formSuaNoi(m, root) {
   const p = (n) => String(n).padStart(2, '0');
   const d = new Date(m.iso);
-  const tg = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  const gio = `${p(d.getHours())}:${p(d.getMinutes())}`;
+  const ngayISO = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
   const sh = openSheet(`
     <h3>${ic('edit')} Sửa nơi làm việc</h3>
-    <div class="wl-form-row wide">
-      <div class="field"><label>Thời gian</label>
-        <input class="input" type="datetime-local" id="snTg" value="${tg}"></div>
+    <div class="wl-form-row">
+      <div class="field"><label>Giờ</label>
+        <input class="input" type="time" id="snGio" value="${gio}"></div>
       <div class="field"><label>Địa điểm</label>
         <input class="input" id="snNoi" value="${esc(m.noi)}"></div>
     </div>
     <button class="btn btn-primary mt" id="snOK">${ic('check')} Lưu</button>
     <button class="btn btn-quiet danger mt" id="snXoa">${ic('x')} Xóa mốc này</button>`);
   $('#snOK', sh).onclick = () => busy($('#snOK', sh), async () => {
-    const noi = $('#snNoi', sh).value.trim(), tgv = $('#snTg', sh).value;
-    if (!noi || !tgv) { toast('Cho em xin giờ và địa điểm ạ.', 'err'); return; }
+    const noi = $('#snNoi', sh).value.trim(), gioV = $('#snGio', sh).value;
+    if (!noi || !gioV) { toast('Cho em xin giờ và địa điểm ạ.', 'err'); return; }
     try {
       await rpc('fn_sua_ke_hoach', { p_id: m.id, p_thay_doi: {
-        dia_diem: noi, thoi_gian: new Date(tgv).toISOString(),
+        dia_diem: noi, thoi_gian: new Date(`${ngayISO}T${gioV}`).toISOString(),
       }});
       closeSheet(); toast('Em đã cập nhật ạ.'); renderHomNay(root);
     } catch (e) { toast(loiNguoi(e), 'err'); }

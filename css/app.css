@@ -929,3 +929,17 @@ input[type="time"].input, input[type="date"].input, input[type="datetime-local"]
 /* Hàng Ngày + Giờ (dời kế hoạch): ngày rộng, giờ hẹp, cùng hàng không đè */
 .ngaygio-row { display: grid; grid-template-columns: 1fr 108px; gap: 10px; }
 .ngaygio-row .input { min-width: 0; }
+
+/* Badge trạng thái báo cáo/kế hoạch trong lịch trình Ban điều hành */
+.ns-badges { display: flex; flex-direction: column; gap: 4px; align-items: flex-end; flex: 0 0 auto; }
+.badge-warn { background: var(--gold-soft, #FdF6E3); color: var(--gold-ink, #8A6D1A); }
+
+/* Kế hoạch chờ phản hồi (tab Báo cáo): thẻ viền + nền nhẹ, đánh dấu đã báo cáo */
+.kh-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; margin-bottom: 8px;
+  border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.kh-item:last-child { margin-bottom: 0; }
+.kh-item.kh-done { border-color: var(--acc); background: var(--acc-soft); }
+.kh-item.kh-done .list-title { color: var(--acc-ink); }
+.kh-tick { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 50%;
+  background: var(--acc-grad); color: #fff; display: grid; place-items: center; }
+.kh-tick .ic { width: 18px; height: 18px; stroke-width: 3; }
