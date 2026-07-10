@@ -910,3 +910,8 @@ input[type="time"].input, input[type="date"].input, input[type="datetime-local"]
   -webkit-appearance: none; appearance: none;
   display: block; box-sizing: border-box;
 }
+
+/* Segmented nhỏ gọn cho header card (Timeline / Văn bản) */
+.seg-sm { flex: 0 0 auto; width: auto; padding: 3px; }
+.seg-sm button { flex: 0 0 auto; min-height: 30px; padding: 0 14px; font-size: 13px; }
+.hd-ngay { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }

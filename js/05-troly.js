@@ -357,6 +357,29 @@ function gắnUndo(sh, daLam) {
 // ============================================================
 // moGhiAm: luồng ghi âm dùng chung
 // ============================================================
+// Tự cập nhật nơi làm việc theo địa điểm trong kế hoạch (khi hôm nay chưa chấm công)
+async function tuCapNhatViTri(cvs) {
+  const hn = await rpc('fn_lay_hom_nay');
+  if (hn?.checkin) return;                 // đã chấm rồi → không đụng
+  // lấy mục sớm nhất có địa điểm
+  const coDia = [...cvs].filter((c) => c.dia_diem)
+    .sort((a, b) => new Date(a.thoi_gian) - new Date(b.thoi_gian))[0];
+  if (!coDia) return;                      // không có địa điểm nào → không tự chấm
+  const d = coDia.dia_diem.toLowerCase();
+  const co = (re) => re.test(d);
+  let loai = null, diaDiem = null;
+  if (co(/(văn phòng|van phong|nón vải|non vai|xưởng nón|xuong non|vp\b)/)) loai = 'VAN_PHONG';
+  else if (co(/(ở nhà|o nha|tại nhà|tai nha|làm.*nhà|wfh)/)) loai = 'LAM_O_NHA';
+  else if (co(/(nghỉ phép|nghi phep|nghỉ)/)) loai = 'NGHI_PHEP';
+  else { loai = 'CONG_TAC'; diaDiem = coDia.dia_diem; }  // có địa điểm cụ thể → công tác
+  await rpc('fn_checkin', { p_loai: loai, p_dia_diem: diaDiem, p_ghi_chu: null });
+  const ten = loai === 'VAN_PHONG' ? 'Văn phòng'
+            : loai === 'LAM_O_NHA' ? 'Làm tại nhà'
+            : loai === 'NGHI_PHEP' ? 'Nghỉ phép'
+            : diaDiem;
+  toast(`Em đã cập nhật nơi làm việc: ${ten} ạ.`, 'ok', 3500);
+}
+
 export function moGhiAm(mode = 'troly', extra = {}) {
   openRecorder({
     contextHtml: extra.contextHtml || '',
@@ -466,6 +489,8 @@ function xemTruocKeHoachNgay(sh, bi, cvs, _luuId, extra) {
           const ngay = (cvs[0]?.thoi_gian || '').slice(0, 10) || null;
           try { await rpc('fn_luu_ke_hoach_ngay', { p_ngay: ngay, p_van_ban: bi.van_ban }); } catch {}
         }
+        // Tự cập nhật nơi làm việc theo địa điểm trong kế hoạch (nếu hôm nay chưa chấm)
+        try { await tuCapNhatViTri(cvs); } catch {}
         xoaTam(_luuId);
         rung(20); closeSheet();
         toast(`Em đã lưu ${cvs.length} kế hoạch vào tab Kế hoạch ạ.`);

@@ -2,9 +2,10 @@
 // CÔNG VIỆC — 10-tab-homnay.js
 // ============================================================
 import { rpc, phien, loiNguoi } from './01-supabase.js';
-import { $, $$, ic, esc, nl2html, toast, openSheet, closeSheet, busy, fmtNgay, fmtGio, rung } from './03-ui.js';
+import { $, $$, ic, esc, nl2html, mdMini, toast, openSheet, closeSheet, busy, fmtNgay, fmtGio, rung } from './03-ui.js';
 import { MC } from './00-config.js';
 import { moGhiAm } from './05-troly.js';
+import { veHourline, moChiTiet, keHoachSangVanBan } from './12-tab-kehoach.js';
 
 let D = null; // dữ liệu hôm nay
 
@@ -284,22 +285,44 @@ function veBaoCao(root) {
   }
 }
 
-// ---------- Kế hoạch hôm nay ----------
+// ---------- Kế hoạch hôm nay (hiển thị Y CHANG Lịch trong ngày) ----------
 function veKeHoach(root) {
   const box = $('#hnKeHoach', root);
-  const ds = D.ke_hoach || [];
+  const ds = (D.ke_hoach || []).filter((k) => k.trang_thai !== 'DA_HUY');
+  if (!ds.length) {
+    box.innerHTML = `
+      <h2 class="card-title">${ic('calendar')} Kế hoạch hôm nay</h2>
+      <p class="muted">${MC.chuaCoKeHoach}</p>
+      <button class="btn btn-primary mt" id="hnKhBtn">${ic('mic')} Kế hoạch ngay</button>`;
+    $('#hnKhBtn', box).onclick = () => moGhiAm('troly', { onSaved: () => renderHomNay(root), contextHtml: ctxKeHoachHomNay() });
+    return;
+  }
   box.innerHTML = `
-    <h2 class="card-title">${ic('calendar')} Kế hoạch hôm nay</h2>
-    ${ds.length ? ds.map((k) => `
-      <div class="list-item">
-        <span class="badge badge-gold mono">${fmtGio(k.thoi_gian)}</span>
-        <div class="list-main">
-          <div class="list-title">${esc(k.tieu_de)}</div>
-          ${k.dia_diem ? `<div class="list-sub">${esc(k.dia_diem)}</div>` : ''}
-        </div>
-      </div>`).join('') + `
-      <button class="btn btn-quiet mt" id="hnKhBtn">${ic('mic')} Lập thêm kế hoạch</button>`
-    : `<p class="muted">${MC.chuaCoKeHoach}</p>
-       <button class="btn btn-primary mt" id="hnKhBtn">${ic('mic')} Kế hoạch ngay</button>`}`;
-  $('#hnKhBtn', box) && ($('#hnKhBtn', box).onclick = () => moGhiAm('troly', { onSaved: () => renderHomNay(root) }));
+    <div class="hd-ngay"><h2 class="card-title mb0">${ic('calendar')} Kế hoạch hôm nay</h2>
+      <div class="seg seg-sm" id="hnKhView">
+        <button class="on" data-v="timeline">Timeline</button>
+        <button data-v="vanban">Văn bản</button>
+      </div></div>
+    <div id="hnKhTimeline" class="mt">${veHourline(ds, [], true)}</div>
+    <div id="hnKhVanBan" class="mt" style="display:none"><div class="md-doc" id="hnKhVbDoc"></div></div>
+    <button class="btn btn-quiet mt" id="hnKhBtn">${ic('mic')} Lập thêm kế hoạch</button>`;
+
+  $('#hnKhBtn', box).onclick = () => moGhiAm('troly', { onSaved: () => renderHomNay(root), contextHtml: ctxKeHoachHomNay() });
+  $$('[data-open]', box).forEach((el) => el.onclick = () => {
+    const k = ds.find((x) => String(x.id) === el.dataset.open);
+    if (k) moChiTiet(k, () => renderHomNay(root));
+  });
+  let _napVb = false;
+  $$('#hnKhView button', box).forEach((b) => b.onclick = async () => {
+    $$('#hnKhView button', box).forEach((x) => x.classList.toggle('on', x === b));
+    const vb = b.dataset.v === 'vanban';
+    $('#hnKhTimeline', box).style.display = vb ? 'none' : '';
+    $('#hnKhVanBan', box).style.display = vb ? '' : 'none';
+    if (vb && !_napVb) {
+      _napVb = true;
+      let txt = keHoachSangVanBan(ds);
+      try { const r = await rpc('fn_ke_hoach_ngay', { p_ngay: D.ngay }); if (r?.van_ban) txt = r.van_ban; } catch {}
+      $('#hnKhVbDoc', box).innerHTML = mdMini(txt);
+    }
+  });
 }

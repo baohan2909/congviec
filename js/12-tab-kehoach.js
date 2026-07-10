@@ -142,7 +142,7 @@ function veItem(k) {
 }
 
 // ---------- Kế hoạch → BẢN VĂN BẢN gọn (1 cấp bullet theo giờ) ----------
-function keHoachSangVanBan(list, diChuyen = []) {
+export function keHoachSangVanBan(list, diChuyen = []) {
   const muc = [];
   list.forEach((k) => muc.push({ t: k.thoi_gian, s: `${fmtGio(k.thoi_gian)} ${k.tieu_de}${k.dia_diem ? ' · ' + k.dia_diem : ''}` }));
   diChuyen.forEach((d) => muc.push({ t: d.thoi_gian || d.gio, s: `${d.gio ? fmtGio(d.gio) + ' ' : ''}Di chuyển: ${d.dia_diem || ''}`.trim() }));
@@ -154,7 +154,7 @@ function keHoachSangVanBan(list, diChuyen = []) {
 // ---------- Timeline thông minh: chỉ hiện MỐC THỰC TẾ ----------
 // Không liệt kê mọi giờ. Gom kế hoạch + di chuyển thành các mốc
 // theo thời gian, nối bằng một trục dọc. Chèn "Bây giờ" đúng vị trí.
-function veHourline(list, diChuyen, isToday) {
+export function veHourline(list, diChuyen, isToday) {
   const phut = (iso) => {
     const p = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Ho_Chi_Minh' }).formatToParts(new Date(iso));
     return Number(p.find((x) => x.type === 'hour').value) * 60 + Number(p.find((x) => x.type === 'minute').value);
@@ -217,7 +217,7 @@ function veHourline(list, diChuyen, isToday) {
 }
 
 // ---------- Sheet chi tiết ----------
-function moChiTiet(k, reload) {
+export function moChiTiet(k, reload) {
   const p = (n) => String(n).padStart(2, '0');
   const local = () => {
     const d = new Date(k.thoi_gian);
@@ -229,6 +229,12 @@ function moChiTiet(k, reload) {
       <input class="input" id="ktTd" value="${esc(k.tieu_de)}"></div>
     <div class="field"><label>Thời gian</label>
       <input class="input" type="datetime-local" id="ktTg" value="${local()}"></div>
+    <div class="field"><label>Dời nhanh sang ngày khác (giữ nguyên giờ)</label>
+      <div class="row">
+        <button class="btn btn-quiet btn-sm" data-doi="1">${ic('calendar')} Ngày mai</button>
+        <button class="btn btn-quiet btn-sm" data-doi="2">Ngày kia</button>
+        <button class="btn btn-quiet btn-sm" data-doi="7">+7 ngày</button>
+      </div></div>
     <div class="field"><label>Nhắc trước</label>
         <select class="input" id="ktNh">
           ${[0, 15, 30, 60, 120].map((m) => `<option value="${m}" ${m === k.nhac_truoc_phut ? 'selected' : ''}>${m === 0 ? 'Đúng giờ' : m + ' phút'}</option>`).join('')}
@@ -240,6 +246,16 @@ function moChiTiet(k, reload) {
     <p class="muted" style="font-size:12.5px;margin:10px 0 0;text-align:center">${ic('bell', 'ic-xs')} Nhắc tự động đã đặt theo "Nhắc trước" — không cần thao tác thêm ạ.</p>`);
 
   const dong = () => { closeSheet(); reload(); };
+
+  // Dời nhanh sang ngày khác — cộng ngày vào ô thời gian, giữ nguyên giờ
+  $$('[data-doi]', sh).forEach((b) => b.onclick = () => {
+    const inp = $('#ktTg', sh);
+    const base = inp.value ? new Date(inp.value) : new Date(k.thoi_gian);
+    base.setDate(base.getDate() + Number(b.dataset.doi));
+    const p = (n) => String(n).padStart(2, '0');
+    inp.value = `${base.getFullYear()}-${p(base.getMonth() + 1)}-${p(base.getDate())}T${p(base.getHours())}:${p(base.getMinutes())}`;
+    toast(`Đã đặt ${p(base.getDate())}/${p(base.getMonth() + 1)}. Bấm "Lưu sửa đổi" để chốt ạ.`, 'ok', 3500);
+  });
 
   $('#ktLuu', sh) && ($('#ktLuu', sh).onclick = () => busy($('#ktLuu', sh), async () => {
     const td = $('#ktTd', sh).value.trim(), tg = $('#ktTg', sh).value;
