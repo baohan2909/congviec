@@ -229,12 +229,9 @@ export function moChiTiet(k, reload) {
       <input class="input" id="ktTd" value="${esc(k.tieu_de)}"></div>
     <div class="field"><label>Thời gian</label>
       <input class="input" type="datetime-local" id="ktTg" value="${local()}"></div>
-    <div class="field"><label>Dời nhanh sang ngày khác (giữ nguyên giờ)</label>
-      <div class="row">
-        <button class="btn btn-quiet btn-sm" data-doi="1">${ic('calendar')} Ngày mai</button>
-        <button class="btn btn-quiet btn-sm" data-doi="2">Ngày kia</button>
-        <button class="btn btn-quiet btn-sm" data-doi="7">+7 ngày</button>
-      </div></div>
+    <div class="field doi-ngay"><label>${ic('calendar')} Dời sang ngày khác</label>
+      <input class="input input-acc" type="date" id="ktDoiNgay" value="${local().slice(0, 10)}">
+      <p class="muted" style="font-size:12.5px;margin:6px 0 0">Chọn ngày mới — giờ giữ theo công việc, chỉnh ở ô Thời gian nếu cần ạ.</p></div>
     <div class="field"><label>Nhắc trước</label>
         <select class="input" id="ktNh">
           ${[0, 15, 30, 60, 120].map((m) => `<option value="${m}" ${m === k.nhac_truoc_phut ? 'selected' : ''}>${m === 0 ? 'Đúng giờ' : m + ' phút'}</option>`).join('')}
@@ -247,14 +244,14 @@ export function moChiTiet(k, reload) {
 
   const dong = () => { closeSheet(); reload(); };
 
-  // Dời nhanh sang ngày khác — cộng ngày vào ô thời gian, giữ nguyên giờ
-  $$('[data-doi]', sh).forEach((b) => b.onclick = () => {
+  // Dời sang ngày khác: đổi ngày trong ô date → set lại ô Thời gian, giữ nguyên giờ
+  $('#ktDoiNgay', sh) && ($('#ktDoiNgay', sh).onchange = () => {
+    const ngay = $('#ktDoiNgay', sh).value; if (!ngay) return;
     const inp = $('#ktTg', sh);
-    const base = inp.value ? new Date(inp.value) : new Date(k.thoi_gian);
-    base.setDate(base.getDate() + Number(b.dataset.doi));
-    const p = (n) => String(n).padStart(2, '0');
-    inp.value = `${base.getFullYear()}-${p(base.getMonth() + 1)}-${p(base.getDate())}T${p(base.getHours())}:${p(base.getMinutes())}`;
-    toast(`Đã đặt ${p(base.getDate())}/${p(base.getMonth() + 1)}. Bấm "Lưu sửa đổi" để chốt ạ.`, 'ok', 3500);
+    const cur = inp.value ? new Date(inp.value) : new Date(k.thoi_gian);
+    const pp = (n) => String(n).padStart(2, '0');
+    inp.value = `${ngay}T${pp(cur.getHours())}:${pp(cur.getMinutes())}`;
+    toast('Đã đặt ngày mới — bấm "Lưu sửa đổi" để chốt ạ.', 'ok', 3200);
   });
 
   $('#ktLuu', sh) && ($('#ktLuu', sh).onclick = () => busy($('#ktLuu', sh), async () => {

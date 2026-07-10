@@ -915,3 +915,13 @@ input[type="time"].input, input[type="date"].input, input[type="datetime-local"]
 .seg-sm { flex: 0 0 auto; width: auto; padding: 3px; }
 .seg-sm button { flex: 0 0 auto; min-height: 30px; padding: 0 14px; font-size: 13px; }
 .hd-ngay { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+
+/* Ô "Dời sang ngày khác" — nổi bật tông xanh đậm hệ thống */
+.doi-ngay label { color: var(--acc-ink); display: inline-flex; align-items: center; gap: 6px; }
+.doi-ngay label .ic { width: 16px; height: 16px; }
+.input-acc {
+  border: 1.5px solid var(--acc) !important;
+  background: var(--acc-soft) !important;
+  color: var(--acc-ink); font-weight: 600;
+}
+.input-acc:focus { box-shadow: 0 0 0 3px var(--acc-soft); }

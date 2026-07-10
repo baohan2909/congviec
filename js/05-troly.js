@@ -368,12 +368,22 @@ async function tuCapNhatViTri(cvs) {
   const d = coDia.dia_diem.toLowerCase();
   const co = (re) => re.test(d);
   let loai = null, diaDiem = null;
-  if (co(/(văn phòng|van phong|nón vải|non vai|xưởng nón|xuong non|vp\b)/)) loai = 'VAN_PHONG';
-  else if (co(/(ở nhà|o nha|tại nhà|tai nha|làm.*nhà|wfh)/)) loai = 'LAM_O_NHA';
-  else if (co(/(nghỉ phép|nghi phep|nghỉ)/)) loai = 'NGHI_PHEP';
-  else { loai = 'CONG_TAC'; diaDiem = coDia.dia_diem; }  // có địa điểm cụ thể → công tác
+  // Khu Văn phòng – Xưởng nón vải: văn phòng / kho / kho tổng / kho vải / dưới kho / nón vải
+  if (co(/(văn phòng|van phong|nón vải|non vai|xưởng nón|xuong non|kho tổng|kho tong|kho vải|kho vai|dưới kho|duoi kho|ở kho|o kho|xuống kho|xuong kho|\bkho\b|\bvp\b)/)) {
+    loai = 'VAN_PHONG';
+  } else if (co(/(ở nhà|o nha|tại nhà|tai nha|làm.*nhà|wfh)/)) {
+    loai = 'LAM_O_NHA';
+  } else if (co(/(nghỉ phép|nghi phep)/)) {
+    loai = 'NGHI_PHEP';
+  } else if (co(/(bảo hiểm|bao hiem)/)) {
+    loai = 'CONG_TAC'; diaDiem = 'Xưởng bảo hiểm';
+  } else if (co(/(hai bà trưng|hai ba trung|hbt)/)) {
+    loai = 'CONG_TAC'; diaDiem = 'Cửa hàng Hai Bà Trưng';
+  } else {
+    loai = 'CONG_TAC'; diaDiem = coDia.dia_diem;   // địa điểm/đối tác cụ thể khác
+  }
   await rpc('fn_checkin', { p_loai: loai, p_dia_diem: diaDiem, p_ghi_chu: null });
-  const ten = loai === 'VAN_PHONG' ? 'Văn phòng'
+  const ten = loai === 'VAN_PHONG' ? 'Xưởng nón vải (văn phòng)'
             : loai === 'LAM_O_NHA' ? 'Làm tại nhà'
             : loai === 'NGHI_PHEP' ? 'Nghỉ phép'
             : diaDiem;
