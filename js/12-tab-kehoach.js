@@ -227,11 +227,12 @@ export function moChiTiet(k, reload) {
     <h3>${ic('calendar')} Chi tiết kế hoạch</h3>
     <div class="field"><label>Việc gì</label>
       <input class="input" id="ktTd" value="${esc(k.tieu_de)}"></div>
-    <div class="field"><label>Thời gian</label>
-      <input class="input" type="datetime-local" id="ktTg" value="${local()}"></div>
-    <div class="field doi-ngay"><label>${ic('calendar')} Dời sang ngày khác</label>
-      <input class="input input-acc" type="date" id="ktDoiNgay" value="${local().slice(0, 10)}">
-      <p class="muted" style="font-size:12.5px;margin:6px 0 0">Chọn ngày mới — giờ giữ theo công việc, chỉnh ở ô Thời gian nếu cần ạ.</p></div>
+    <div class="field doi-ngay"><label>${ic('calendar')} Thời gian — dời sang ngày khác</label>
+      <div class="ngaygio-row">
+        <input class="input input-acc" type="date" id="ktNgay" value="${local().slice(0, 10)}">
+        <input class="input" type="time" id="ktGio" value="${local().slice(11, 16)}">
+      </div>
+      <p class="muted" style="font-size:12.5px;margin:6px 0 0">Chọn ngày mới; giờ mặc định theo công việc, chỉnh nếu cần ạ.</p></div>
     <div class="field"><label>Nhắc trước</label>
         <select class="input" id="ktNh">
           ${[0, 15, 30, 60, 120].map((m) => `<option value="${m}" ${m === k.nhac_truoc_phut ? 'selected' : ''}>${m === 0 ? 'Đúng giờ' : m + ' phút'}</option>`).join('')}
@@ -244,22 +245,13 @@ export function moChiTiet(k, reload) {
 
   const dong = () => { closeSheet(); reload(); };
 
-  // Dời sang ngày khác: đổi ngày trong ô date → set lại ô Thời gian, giữ nguyên giờ
-  $('#ktDoiNgay', sh) && ($('#ktDoiNgay', sh).onchange = () => {
-    const ngay = $('#ktDoiNgay', sh).value; if (!ngay) return;
-    const inp = $('#ktTg', sh);
-    const cur = inp.value ? new Date(inp.value) : new Date(k.thoi_gian);
-    const pp = (n) => String(n).padStart(2, '0');
-    inp.value = `${ngay}T${pp(cur.getHours())}:${pp(cur.getMinutes())}`;
-    toast('Đã đặt ngày mới — bấm "Lưu sửa đổi" để chốt ạ.', 'ok', 3200);
-  });
-
   $('#ktLuu', sh) && ($('#ktLuu', sh).onclick = () => busy($('#ktLuu', sh), async () => {
-    const td = $('#ktTd', sh).value.trim(), tg = $('#ktTg', sh).value;
-    if (!td || !tg) { toast('Anh/chị cho em xin tên việc và thời gian ạ.', 'err'); return; }
+    const td = $('#ktTd', sh).value.trim();
+    const ngay = $('#ktNgay', sh).value, gio = $('#ktGio', sh).value;
+    if (!td || !ngay || !gio) { toast('Anh/chị cho em xin tên việc, ngày và giờ ạ.', 'err'); return; }
     try {
       await rpc('fn_sua_ke_hoach', { p_id: k.id, p_thay_doi: {
-        tieu_de: td, thoi_gian: new Date(tg).toISOString(),
+        tieu_de: td, thoi_gian: new Date(`${ngay}T${gio}`).toISOString(),
         dia_diem: $('#ktDd', sh).value.trim() || null,
         nhac_truoc_phut: Number($('#ktNh', sh).value),
       }});

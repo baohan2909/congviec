@@ -62,6 +62,16 @@ function veNhac(root) {
 }
 
 // ---------- Check-in ----------
+// Chuẩn hóa tên nơi làm việc theo bối cảnh Nón Sơn (gộp các cách gọi cùng một chỗ)
+function chuanHoaNoi(s) {
+  if (!s) return s;
+  const d = String(s).toLowerCase();
+  if (/(bảo hiểm|bao hiem)/.test(d)) return 'Xưởng bảo hiểm';
+  if (/(hai bà trưng|hai ba trung|hbt)/.test(d)) return 'Cửa hàng Hai Bà Trưng';
+  if (/(văn phòng|van phong|nón vải|non vai|xưởng nón|xuong non|kho tổng|kho tong|kho vải|kho vai|dưới kho|duoi kho|xuống kho|xuong kho|\bkho\b|\bvp\b)/.test(d)) return 'Xưởng nón vải';
+  return s; // địa điểm/đối tác khác giữ nguyên
+}
+
 function veCheckin(root) {
   const box = $('#hnCheckin', root);
   const c = D.checkin;
@@ -86,27 +96,33 @@ function veCheckin(root) {
   const ten = (D.trang_thai_ds || []).find((t) => t.ma === c.loai)?.ten || c.loai;
   const gioBayGio = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date());
   // Timeline nơi làm việc: MỐC ĐẦU = check-in gốc + các mục KẾ HOẠCH hôm nay CÓ ĐỊA ĐIỂM
-  const moc = [];
-  // mốc check-in (điểm bắt đầu ngày) — read-only
+  const moc0 = [];
   const gioCheckin = c.tao_luc
     ? new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Ho_Chi_Minh' }).format(new Date(c.tao_luc))
     : '';
-  moc.push({ id: null, goc: true, gio: gioCheckin, iso: c.tao_luc || new Date().toISOString(),
-    noi: c.dia_diem || ten });
-  (D.ke_hoach || []).filter((k) => k.dia_diem).forEach((k) => moc.push({
-    id: k.id, goc: false, gio: fmtGio(k.thoi_gian), iso: k.thoi_gian, noi: k.dia_diem, tieu_de: k.tieu_de,
+  moc0.push({ id: null, goc: true, gio: gioCheckin, iso: c.tao_luc || new Date().toISOString(),
+    noi: chuanHoaNoi(c.dia_diem) || 'Văn phòng · Xưởng nón vải' });
+  (D.ke_hoach || []).filter((k) => k.dia_diem).forEach((k) => moc0.push({
+    id: k.id, goc: false, gio: fmtGio(k.thoi_gian), iso: k.thoi_gian, noi: chuanHoaNoi(k.dia_diem), tieu_de: k.tieu_de,
   }));
-  moc.sort((a, b) => new Date(a.iso) - new Date(b.iso));
+  moc0.sort((a, b) => new Date(a.iso) - new Date(b.iso));
+  // GỘP mốc liên tiếp CÙNG nơi (sau chuẩn hóa) — chỉ hiện khi ĐỔI nơi
+  const moc = [];
+  for (const m of moc0) { const last = moc[moc.length - 1]; if (last && last.noi === m.noi) continue; moc.push(m); }
+
   const nowISO = new Date().toISOString();
   const mocHienTai = moc.filter((m) => m.iso <= nowISO).pop() || moc[0];
-  const noiHienTai = mocHienTai ? mocHienTai.noi : (c.dia_diem || ten);
+  const noiHienTai = mocHienTai ? mocHienTai.noi : chuanHoaNoi(c.dia_diem);
+  // Nếu nơi hiện tại thuộc nhóm Xưởng nón vải → coi như trùng badge chính, không hiện badge phụ
+  const laNonVai = (s) => /xưởng nón vải|van phong|văn phòng/i.test(String(s || ''));
+  const hienBadgePhu = noiHienTai && !laNonVai(noiHienTai);
 
   box.innerHTML = `
     <div class="hd-ngay"><h2 class="card-title mb0">${ic('pin')} Nơi làm việc hiện tại</h2>
       <span class="wn-clock mono" id="hnClock">${gioBayGio}</span></div>
     <div class="worknow">
       <button class="badge badge-acc wn-loai" id="wnLoai" style="border:none;cursor:pointer">${ic('check')} ${esc(ten)} ${ic('edit', 'ic-xs')}</button>
-      ${noiHienTai && noiHienTai !== ten ? `<span class="wn-place">${ic('pin')} ${esc(noiHienTai)}</span>` : ''}
+      ${hienBadgePhu ? `<span class="wn-place">${ic('pin')} ${esc(noiHienTai)}</span>` : ''}
       ${c.ghi_chu ? `<div class="muted" style="font-size:14px;width:100%">${esc(c.ghi_chu)}</div>` : ''}
     </div>
     <hr class="hr">

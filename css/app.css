@@ -925,3 +925,7 @@ input[type="time"].input, input[type="date"].input, input[type="datetime-local"]
   color: var(--acc-ink); font-weight: 600;
 }
 .input-acc:focus { box-shadow: 0 0 0 3px var(--acc-soft); }
+
+/* Hàng Ngày + Giờ (dời kế hoạch): ngày rộng, giờ hẹp, cùng hàng không đè */
+.ngaygio-row { display: grid; grid-template-columns: 1fr 108px; gap: 10px; }
+.ngaygio-row .input { min-width: 0; }
