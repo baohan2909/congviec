@@ -62,6 +62,17 @@ function veNhac(root) {
 }
 
 // ---------- Check-in ----------
+// Map địa điểm (text) → { loại nơi làm việc, địa điểm } để tự chấm công
+function mapNoiLamViec(diaDiem) {
+  const d = String(diaDiem || '').toLowerCase();
+  if (/(bảo hiểm|bao hiem)/.test(d)) return { loai: 'CONG_TAC', diaDiem: 'Xưởng bảo hiểm' };
+  if (/(hai bà trưng|hai ba trung|hbt)/.test(d)) return { loai: 'CONG_TAC', diaDiem: 'Cửa hàng Hai Bà Trưng' };
+  if (/(văn phòng|van phong|nón vải|non vai|xưởng nón|xuong non|kho tổng|kho tong|kho vải|kho vai|dưới kho|duoi kho|xuống kho|xuong kho|\bkho\b|\bvp\b)/.test(d)) return { loai: 'VAN_PHONG', diaDiem: null };
+  if (/(ở nhà|o nha|tại nhà|tai nha|làm.*nhà|wfh)/.test(d)) return { loai: 'LAM_O_NHA', diaDiem: null };
+  if (/(nghỉ phép|nghi phep)/.test(d)) return { loai: 'NGHI_PHEP', diaDiem: null };
+  return { loai: 'CONG_TAC', diaDiem };   // địa điểm/đối tác cụ thể khác
+}
+
 // Chuẩn hóa tên nơi làm việc theo bối cảnh Nón Sơn (gộp các cách gọi cùng một chỗ)
 function chuanHoaNoi(s) {
   if (!s) return s;
@@ -77,6 +88,19 @@ function veCheckin(root) {
   const c = D.checkin;
 
   if (!c) {
+    // Chưa chấm công NHƯNG kế hoạch hôm nay đã có địa điểm → tự cập nhật, không bắt chọn tay
+    const kcoDia = (D.ke_hoach || []).filter((k) => k.dia_diem)
+      .sort((a, b) => new Date(a.thoi_gian) - new Date(b.thoi_gian))[0];
+    if (kcoDia && !window._tuCheckinDangChay) {
+      window._tuCheckinDangChay = true;
+      const { loai, diaDiem } = mapNoiLamViec(kcoDia.dia_diem);
+      rpc('fn_checkin', { p_loai: loai, p_dia_diem: diaDiem, p_ghi_chu: null })
+        .then(() => { window._tuCheckinDangChay = false; renderHomNay(root); })
+        .catch(() => { window._tuCheckinDangChay = false; });
+      box.innerHTML = `<h2 class="card-title">${ic('pin')} Nơi làm việc hiện tại</h2>
+        <p class="muted mb0">Em đang cập nhật theo kế hoạch hôm nay…</p>`;
+      return;
+    }
     box.innerHTML = `
       <h2 class="card-title">${ic('pin')} ${MC.chuaCheckin}</h2>
       <div class="status-grid">
