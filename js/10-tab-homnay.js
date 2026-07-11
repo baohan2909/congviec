@@ -23,7 +23,16 @@ export async function renderHomNay(root) {
     </div>`;
 
   try { D = await rpc('fn_lay_hom_nay'); }
-  catch (e) { $('#hnBody', root).innerHTML = `<div class="card">${esc(loiNguoi(e))}</div>`; return; }
+  catch (e) {
+    // Tự thử lại âm thầm (cold start / mạng chớp) — tối đa 2 lần, không làm phiền
+    window._hnRetry = (window._hnRetry || 0) + 1;
+    if (window._hnRetry <= 2) { setTimeout(() => renderHomNay(root), 1200); return; }
+    window._hnRetry = 0;
+    $('#hnBody', root).innerHTML = `<div class="card">${esc(loiNguoi(e))}
+      <button class="btn btn-quiet mt" onclick="location.reload()">Tải lại</button></div>`;
+    return;
+  }
+  window._hnRetry = 0;
 
   $('#hnDate', root).textContent = fmtNgay(D.ngay);
   document.querySelector('.tab[data-id="homnay"]')
@@ -89,8 +98,11 @@ function veCheckin(root) {
 
   if (!c) {
     // Chưa chấm công NHƯNG kế hoạch hôm nay đã có địa điểm → tự cập nhật, không bắt chọn tay
-    const kcoDia = (D.ke_hoach || []).filter((k) => k.dia_diem)
-      .sort((a, b) => new Date(a.thoi_gian) - new Date(b.thoi_gian))[0];
+    const dsDia = (D.ke_hoach || []).filter((k) => k.dia_diem)
+      .sort((a, b) => new Date(a.thoi_gian) - new Date(b.thoi_gian));
+    // Mốc ĐANG hiệu lực: giờ ≤ bây giờ gần nhất; chưa tới mốc nào → mốc đầu tiên
+    const nowMs = Date.now();
+    const kcoDia = [...dsDia].reverse().find((k) => new Date(k.thoi_gian).getTime() <= nowMs) || dsDia[0];
     if (kcoDia && !window._tuCheckinDangChay) {
       window._tuCheckinDangChay = true;
       const { loai, diaDiem } = mapNoiLamViec(kcoDia.dia_diem);

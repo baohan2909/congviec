@@ -155,6 +155,7 @@ export async function xuLyVoiTroLy(text, mode = 'troly', extra = {}) {
   const sh = openSheet(`
     <h3>${ic('sparkle')} ${MC.troLyCua(tenGoi)}</h3>
     <div class="troly-loading" id="tlLoad">
+      <p class="tl-hello">Dạ, em đã nhận được nội dung của ${esc(tenGoi)}. Em xử lý ngay ạ…</p>
       <div class="tl-orb"><span></span><span></span><span></span></div>
       <div class="tl-steps">
         <div class="tl-step on" data-s="0">${ic('mic')} <span>Đang nghe nội dung</span></div>
@@ -438,12 +439,13 @@ export function moGhiAm(mode = 'troly', extra = {}) {
 // ============================================================
 function xemTruocKeHoachNgay(sh, bi, cvs, _luuId, extra) {
   const tenGoi = phien.nd().ten_goi;
+  const gioCua = (iso) => { const d = new Date(iso); const p = (n) => String(n).padStart(2, '0'); return `${p(d.getHours())}:${p(d.getMinutes())}`; };
   const veList = () => cvs.map((c) => `
-    <div class="kh-item" data-i="${c._i}">
-      <span class="badge badge-gold mono">${fmtNgayGio(c.thoi_gian)}</span>
+    <div class="kh-item kh-edit" data-i="${c._i}">
+      <input class="input kh-gio mono" type="time" value="${gioCua(c.thoi_gian)}">
       <div class="list-main">
         <input class="input kh-td" value="${esc(c.tieu_de)}" style="min-height:42px;font-weight:600">
-        ${c.dia_diem ? `<div class="list-sub">${esc(c.dia_diem)}</div>` : ''}
+        <input class="input kh-dd mt-xs" value="${esc(c.dia_diem || '')}" placeholder="Địa điểm (nếu có)">
       </div>
       <button class="btn btn-sm btn-quiet kh-bo" aria-label="Bỏ mục này">${ic('x')}</button>
     </div>`).join('');
@@ -456,7 +458,9 @@ function xemTruocKeHoachNgay(sh, bi, cvs, _luuId, extra) {
         <button data-v="tl">Dòng thời gian</button>
       </div>
       <div id="khViewBan" class="pv-block">
-        <div class="md-doc">${mdMini(bi.van_ban || '')}</div>
+        <div class="md-doc" id="khVbXem">${mdMini(bi.van_ban || '')}</div>
+        <textarea class="input hidden" id="khVbSua" style="min-height:180px">${esc(bi.van_ban || '')}</textarea>
+        <button class="btn btn-quiet btn-sm mt" id="khVbBtn">${ic('edit')} Sửa văn bản</button>
       </div>
       <div id="khViewTl" class="hidden">
         ${cvs.length ? veList() : '<p class="muted">Không tách được mốc giờ nào ạ.</p>'}
@@ -482,6 +486,28 @@ function xemTruocKeHoachNgay(sh, bi, cvs, _luuId, extra) {
     $$('.kh-td', sh).forEach((inp) => inp.onchange = () => {
       const i = Number(inp.closest('.kh-item').dataset.i);
       const c = cvs.find((x) => x._i === i); if (c) c.tieu_de = inp.value;
+    });
+    $$('.kh-gio', sh).forEach((inp) => inp.onchange = () => {
+      const i = Number(inp.closest('.kh-item').dataset.i);
+      const c = cvs.find((x) => x._i === i);
+      if (c && inp.value) c.thoi_gian = c.thoi_gian.slice(0, 11) + inp.value + ':00' + (c.thoi_gian.slice(19) || '+07:00');
+    });
+    $$('.kh-dd', sh).forEach((inp) => inp.onchange = () => {
+      const i = Number(inp.closest('.kh-item').dataset.i);
+      const c = cvs.find((x) => x._i === i); if (c) c.dia_diem = inp.value.trim() || null;
+    });
+    $('#khVbBtn', sh) && ($('#khVbBtn', sh).onclick = () => {
+      const xem = $('#khVbXem', sh), suaEl = $('#khVbSua', sh), btn = $('#khVbBtn', sh);
+      const dangSua = !suaEl.classList.contains('hidden');
+      if (dangSua) {           // đang sửa → lưu lại
+        bi.van_ban = suaEl.value;
+        xem.innerHTML = mdMini(bi.van_ban);
+        xem.classList.remove('hidden'); suaEl.classList.add('hidden');
+        btn.innerHTML = `${ic('edit')} Sửa văn bản`;
+      } else {                 // chuyển sang sửa
+        xem.classList.add('hidden'); suaEl.classList.remove('hidden');
+        btn.innerHTML = `${ic('check')} Xong — dùng bản đã sửa`;
+      }
     });
     $('#khNoiThem', sh).onclick = () => { closeSheet(); moGhiAm('troly', extra); };
     $('#khXacNhan', sh).onclick = () => busy($('#khXacNhan', sh), async () => {

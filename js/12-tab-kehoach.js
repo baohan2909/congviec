@@ -90,7 +90,15 @@ export async function renderKeHoach(root) {
           <div id="khVanBan" style="display:none">
             <div class="md-doc" id="khVbDoc">${mdMini(keHoachSangVanBan(listHT, diNgay))}</div>
           </div>
+          <button class="btn btn-quiet btn-sm mt" id="khLichAll" style="width:100%">${ic('bell')} Cài tất cả vào Lịch iPhone (reo đúng giờ)</button>
         </div>` : ''}`;
+    // Cài TẤT CẢ kế hoạch của ngày vào Lịch iPhone (1 file .ics nhiều sự kiện)
+    $('#khLichAll', box) && ($('#khLichAll', box).onclick = () => {
+      if (!listHT.length) { toast('Chưa có kế hoạch nào ạ.', 'err'); return; }
+      taoICSNhieu(listHT);
+      toast(`Em đã gói ${listHT.length} kế hoạch — mở file rồi bấm "Thêm tất cả" để iPhone reo đúng giờ từng việc ạ.`, 'ok', 5600);
+    });
+
     // Toggle Timeline / Văn bản — nạp bản chi tiết (AI chuẩn hóa) đã lưu
     let _daNapVb = false;
     $$('#khView button', box).forEach((b) => b.onclick = async () => {
@@ -341,6 +349,32 @@ function taoICS({ tieu_de, thoi_gian, dia_diem = '', nhac_truoc_phut = 0, mo_ta 
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url; a.download = `${(tieu_de || 'ke-hoach').slice(0, 40)}.ics`;
+  document.body.appendChild(a); a.click();
+  setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 1000);
+}
+
+// Xuất MỘT file .ics chứa NHIỀU kế hoạch — thêm 1 lần, iPhone reo từng việc
+function taoICSNhieu(list) {
+  const dt = (d) => new Date(d).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+  const esc2 = (s) => String(s || '').replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n');
+  const events = list.map((k) => {
+    const start = new Date(k.thoi_gian);
+    const end = new Date(start.getTime() + 30 * 60000);
+    return [
+      'BEGIN:VEVENT', `UID:cv-${k.id}-${start.getTime()}@nonson`, `DTSTAMP:${dt(new Date())}`,
+      `DTSTART:${dt(start)}`, `DTEND:${dt(end)}`,
+      `SUMMARY:${esc2(k.tieu_de)}`,
+      k.dia_diem ? `LOCATION:${esc2(k.dia_diem)}` : '',
+      'BEGIN:VALARM', `TRIGGER:-PT${Number(k.nhac_truoc_phut) || 0}M`, 'ACTION:DISPLAY',
+      `DESCRIPTION:${esc2(k.tieu_de)}`, 'END:VALARM', 'END:VEVENT',
+    ].filter(Boolean).join('\r\n');
+  }).join('\r\n');
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Cong viec//NonSon//VI',
+    'CALSCALE:GREGORIAN', events, 'END:VCALENDAR'].join('\r\n');
+  const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'ke-hoach-ngay.ics';
   document.body.appendChild(a); a.click();
   setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 1000);
 }
