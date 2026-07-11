@@ -132,3 +132,44 @@ export async function busy(btn, fn) {
   try { return await fn(); }
   finally { btn.disabled = false; btn.innerHTML = old; }
 }
+
+// Đảo của mdMini: HTML (sau chỉnh sửa contenteditable) → markdown gọn
+export function htmlVeMd(rootEl) {
+  const out = [];
+  const inlineMd = (el) => {
+    let s = '';
+    el.childNodes.forEach((n) => {
+      if (n.nodeType === 3) s += n.textContent;
+      else if (n.nodeType === 1) {
+        const tag = n.tagName;
+        if (tag === 'B' || tag === 'STRONG') s += `**${inlineMd(n)}**`;
+        else if (tag === 'CODE') s += `\`${inlineMd(n)}\``;
+        else if (tag === 'BR') s += '\n';
+        else s += inlineMd(n);
+      }
+    });
+    return s;
+  };
+  const walk = (el) => {
+    el.childNodes.forEach((n) => {
+      if (n.nodeType === 3) { const t = n.textContent.trim(); if (t) out.push(t); return; }
+      if (n.nodeType !== 1) return;
+      const tag = n.tagName;
+      if (tag === 'UL' || tag === 'OL') {
+        [...n.children].forEach((li, i) =>
+          out.push((tag === 'OL' ? `${i + 1}. ` : '- ') + inlineMd(li).trim()));
+        out.push('');
+      } else if (tag === 'LI') {
+        out.push('- ' + inlineMd(n).trim());
+      } else if (/^H[1-6]$/.test(tag) || n.classList?.contains('md-sec')) {
+        const t = inlineMd(n).trim().replace(/^\*\*|\*\*$/g, '');
+        out.push(`**${t}**`); out.push('');
+      } else if (tag === 'P' || tag === 'DIV') {
+        const t = inlineMd(n).trim(); if (t) { out.push(t); }
+        if (tag === 'P') out.push('');
+      } else { const t = inlineMd(n).trim(); if (t) out.push(t); }
+    });
+  };
+  walk(rootEl);
+  return out.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+}

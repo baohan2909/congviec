@@ -8,24 +8,37 @@
 // ============================================================
 import { SYS, AI_GATEWAY, MC, loiNguoi } from './00-config.js';
 import { rpc, phien, uploadAnh } from './01-supabase.js';
-import { $, $$, ic, esc, toast, openSheet, closeSheet, busy, fmtNgayGio, mdMini, rung } from './03-ui.js';
+import { $, $$, ic, esc, toast, openSheet, closeSheet, busy, fmtNgayGio, mdMini, htmlVeMd, rung } from './03-ui.js';
 import { openRecorder } from './04-voice.js';
 import { luuTam, xoaTam, danhDauLoi, layTam as layTamPub, xoaTam as xoaTamPub } from './08-luutam.js';
 
 // ---------- Gọi Edge Function ----------
 export async function goiTroLy(text, mode = 'troly') {
-  const res = await fetch(AI_GATEWAY(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', apikey: SYS.SUPA_ANON, Authorization: `Bearer ${SYS.SUPA_ANON}` },
-    body: JSON.stringify({ token: phien.token(), mode, text }),
-  });
-  if (!res.ok) {
-    if (res.status === 401) throw new Error('PHIEN_HET_HAN');
-    let ct = '';
-    try { ct = (await res.json())?.chi_tiet || ''; } catch {}
-    throw new Error(ct ? `AI_LOI: ${ct}` : 'AI_LOI');
+  // Tự thử lại ÂM THẦM khi lỗi MẠNG (Load failed / Failed to fetch) — tối đa 3 lượt gọi
+  let lastErr;
+  for (let lan = 0; lan < 3; lan++) {
+    if (lan) await new Promise((r) => setTimeout(r, 900 * lan));
+    try {
+      const res = await fetch(AI_GATEWAY(), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', apikey: SYS.SUPA_ANON, Authorization: `Bearer ${SYS.SUPA_ANON}` },
+        body: JSON.stringify({ token: phien.token(), mode, text }),
+      });
+      if (!res.ok) {
+        if (res.status === 401) throw new Error('PHIEN_HET_HAN');
+        let ct = '';
+        try { ct = (await res.json())?.chi_tiet || ''; } catch {}
+        throw new Error(ct ? `AI_LOI: ${ct}` : 'AI_LOI');
+      }
+      return res.json(); // { luot_id, text, tool_calls, ke_hoach_cho }
+    } catch (e) {
+      lastErr = e;
+      const msg = String(e?.message || '');
+      // Lỗi nghiệp vụ (AI_LOI, PHIEN_HET_HAN) → không retry; lỗi mạng → retry
+      if (msg.includes('AI_LOI') || msg.includes('PHIEN_HET_HAN')) throw e;
+    }
   }
-  return res.json(); // { luot_id, text, tool_calls, ke_hoach_cho }
+  throw lastErr;
 }
 
 const TEN_TT = { HOAN_THANH: 'Hoàn thành', DANG_LAM: 'Đang thực hiện', CHUA_LAM: 'Chưa thực hiện', HUY: 'Hủy kế hoạch' };
@@ -288,7 +301,8 @@ export async function xuLyVoiTroLy(text, mode = 'troly', extra = {}) {
     ${doneHTML}
     <div class="pv-block">
       <span class="pv-kind">${ic('file')} Báo cáo ngày</span>
-      <textarea class="input" id="bcNoiDung" style="min-height:210px">${esc(bi.noi_dung || '')}</textarea>
+      <div class="md-doc md-editing" id="bcNoiDung" contenteditable="true">${mdMini(bi.noi_dung || '')}</div>
+      <p class="muted" style="font-size:12px;margin:6px 0 0">${ic('edit', 'ic-xs')} Chạm vào văn bản để sửa trực tiếp ạ.</p>
       <label class="pv-check"><input type="checkbox" id="bcVanDe" ${bi.co_van_de ? 'checked' : ''}>
         Có vấn đề phát sinh cần Ban Quản trị lưu ý</label>
     </div>
@@ -312,7 +326,7 @@ export async function xuLyVoiTroLy(text, mode = 'troly', extra = {}) {
     moGhiAm(mode, { ...extra, startText: text });
   };
   $('#pvGui', sh).onclick = () => busy($('#pvGui', sh), async () => {
-    const noiDung = $('#bcNoiDung', sh).value.trim();
+    const noiDung = htmlVeMd($('#bcNoiDung', sh)).trim();
     if (!noiDung) { toast('Nội dung báo cáo đang trống ạ.', 'err'); return; }
 
     // Không chặn: chỉ ghi nhận kế hoạch nào ĐÃ chọn kết quả; bỏ trống thì bỏ qua.
@@ -459,7 +473,6 @@ function xemTruocKeHoachNgay(sh, bi, cvs, _luuId, extra) {
       </div>
       <div id="khViewBan" class="pv-block">
         <div class="md-doc" id="khVbXem">${mdMini(bi.van_ban || '')}</div>
-        <textarea class="input hidden" id="khVbSua" style="min-height:180px">${esc(bi.van_ban || '')}</textarea>
         <button class="btn btn-quiet btn-sm mt" id="khVbBtn">${ic('edit')} Sửa văn bản</button>
       </div>
       <div id="khViewTl" class="hidden">
@@ -497,15 +510,18 @@ function xemTruocKeHoachNgay(sh, bi, cvs, _luuId, extra) {
       const c = cvs.find((x) => x._i === i); if (c) c.dia_diem = inp.value.trim() || null;
     });
     $('#khVbBtn', sh) && ($('#khVbBtn', sh).onclick = () => {
-      const xem = $('#khVbXem', sh), suaEl = $('#khVbSua', sh), btn = $('#khVbBtn', sh);
-      const dangSua = !suaEl.classList.contains('hidden');
-      if (dangSua) {           // đang sửa → lưu lại
-        bi.van_ban = suaEl.value;
+      const xem = $('#khVbXem', sh), btn = $('#khVbBtn', sh);
+      const dangSua = xem.getAttribute('contenteditable') === 'true';
+      if (dangSua) {           // xong → đọc bản đã sửa (định dạng giữ nguyên)
+        bi.van_ban = htmlVeMd(xem);
         xem.innerHTML = mdMini(bi.van_ban);
-        xem.classList.remove('hidden'); suaEl.classList.add('hidden');
+        xem.setAttribute('contenteditable', 'false');
+        xem.classList.remove('md-editing');
         btn.innerHTML = `${ic('edit')} Sửa văn bản`;
-      } else {                 // chuyển sang sửa
-        xem.classList.add('hidden'); suaEl.classList.remove('hidden');
+      } else {                 // sửa TRỰC TIẾP trên văn bản định dạng
+        xem.setAttribute('contenteditable', 'true');
+        xem.classList.add('md-editing');
+        xem.focus();
         btn.innerHTML = `${ic('check')} Xong — dùng bản đã sửa`;
       }
     });

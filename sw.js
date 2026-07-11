@@ -2,7 +2,7 @@
 // CÔNG VIỆC — Service Worker
 // ⚠️ VERSION BUMP: đổi cùng SYS.version (00-config.js) + app_settings
 // ============================================================
-const CACHE_VERSION = 'congviec-0.2.15';
+const CACHE_VERSION = 'congviec-0.2.16';
 const SHELL = [
   './', './index.html', './manifest.webmanifest', './css/app.css',
   './js/00-config.js', './js/01-supabase.js', './js/02-auth.js',

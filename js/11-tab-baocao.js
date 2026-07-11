@@ -133,20 +133,43 @@ async function veKeHoachHomNay(root) {
       const khop = tu.filter((w) => bcText.includes(w)).length;
       return tu.length && khop / tu.length >= 0.5;   // ≥ nửa từ khóa xuất hiện
     };
+    // Trích câu báo cáo liên quan tới một mục (để expand xem chi tiết)
+    const cauLienQuan = (k) => {
+      if (!bcText) return '';
+      const tu = k.tieu_de.toLowerCase().replace(/[.,–—-]/g, ' ').split(/\s+/).filter((w) => w.length >= 4);
+      const cau = (_bcHomNay?.noi_dung || '').split(/\n/).filter((line) => {
+        const l = line.toLowerCase();
+        return tu.filter((w) => l.includes(w)).length >= Math.max(1, Math.ceil(tu.length * 0.4));
+      });
+      return cau.join('\n');
+    };
+    // Việc PHÁT SINH: đếm bullet trong nhóm "Công việc phát sinh" của báo cáo
+    let soPhatSinh = 0;
+    const psIdx = (_bcHomNay?.noi_dung || '').indexOf('Công việc phát sinh');
+    if (psIdx >= 0) soPhatSinh = ((_bcHomNay.noi_dung.slice(psIdx).match(/^\s*[-•]\s+/gm)) || []).length;
+
     const soPh = ds.filter(daPhanHoi).length;
-    $('.card-title', card).innerHTML = `${ic('calendar')} Kế hoạch chờ phản hồi hôm nay${soPh ? ` <span class="badge badge-acc" style="font-size:11px">${soPh}/${ds.length} đã báo cáo</span>` : ''}`;
-    $('#bcKhList', root).innerHTML = ds.map((k) => {
+    const tongBC = soPh + soPhatSinh;
+    $('.card-title', card).innerHTML = `${ic('calendar')} Kế hoạch chờ phản hồi hôm nay${_bcHomNay ? ` <span class="badge badge-acc" style="font-size:11px">${tongBC}/${ds.length} đã báo cáo</span>` : ''}`;
+    $('#bcKhList', root).innerHTML = ds.map((k, i) => {
       const ph = daPhanHoi(k);
+      const chiTiet = ph ? cauLienQuan(k) : '';
       return `
-      <div class="kh-item ${ph ? 'kh-done' : ''}">
+      <div class="kh-item ${ph ? 'kh-done' : ''}" data-exp="${i}" style="cursor:pointer">
         <span class="badge badge-gold mono">${fmtGio(k.thoi_gian)}</span>
         <div class="list-main">
           <div class="list-title">${esc(k.tieu_de)}</div>
           ${k.dia_diem ? `<div class="list-sub">${esc(k.dia_diem)}</div>` : ''}
+          ${chiTiet ? `<div class="kh-chitiet hidden">${mdMini(chiTiet)}</div>` : ''}
         </div>
         ${ph ? `<span class="kh-tick">${ic('check')}</span>` : ''}
       </div>`;
     }).join('');
+    // Bấm thẻ → mở/gọn chi tiết đã báo cáo
+    $$('#bcKhList .kh-item', root).forEach((el) => el.onclick = () => {
+      const ct = $('.kh-chitiet', el);
+      if (ct) ct.classList.toggle('hidden');
+    });
   } catch {}
 }
 
