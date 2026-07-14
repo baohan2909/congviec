@@ -973,3 +973,30 @@ input[type="time"].input, input[type="date"].input, input[type="datetime-local"]
 /* Chi tiết đã báo cáo trong thẻ kế hoạch (mở/gọn khi bấm) */
 .kh-chitiet { margin-top: 8px; padding: 10px 12px; border-radius: 10px;
   background: var(--surface); border: 1px solid var(--line); font-size: 13.5px; }
+
+/* Thanh nhắc việc GỌN — 1 dòng, bấm mở danh sách */
+.nhac-bar { display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 10px 14px; margin-bottom: 12px; border: 1px solid var(--line);
+  border-radius: 12px; background: var(--surface); cursor: pointer; text-align: left; }
+.nhac-bar:active { transform: scale(.99); }
+.nhac-bell { position: relative; flex: 0 0 auto; display: grid; place-items: center;
+  width: 34px; height: 34px; border-radius: 50%; background: var(--acc-soft); color: var(--acc-ink); }
+.nhac-bell .ic { width: 17px; height: 17px; }
+.nhac-dot { position: absolute; top: 2px; right: 2px; width: 9px; height: 9px;
+  border-radius: 50%; background: var(--danger); border: 2px solid var(--surface); }
+.nhac-text { flex: 1; min-width: 0; font-size: 13.5px; font-weight: 600; color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Khối đối chiếu kế hoạch — layout dọc: giờ trên, nội dung rộng tối đa */
+.kh-row { padding: 14px; margin-bottom: 12px; border: 1px solid var(--line);
+  border-radius: 14px; background: var(--surface); }
+.kh-row.thieu { border-color: var(--gold-line, #E4C87A); background: #FFFBF0; }
+.kh-row .kh-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.kh-row .kh-time { font-size: 13px; font-weight: 700; color: var(--ink-2); }
+.kh-row .kh-flag { font-size: 12px; font-weight: 600; color: #8A6D1A;
+  display: inline-flex; align-items: center; gap: 4px; }
+.kh-row .kh-flag.ok { color: var(--acc-ink); }
+.kh-row .kh-flag .ic { width: 14px; height: 14px; }
+.kh-row .kh-ten { font-size: 15.5px; font-weight: 700; margin-bottom: 10px; line-height: 1.4; }
+.kh-row .kh-tt { margin-bottom: 8px; }
+.kh-row textarea.kh-ph { min-height: 72px; font-size: 14.5px; line-height: 1.5; }

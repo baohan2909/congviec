@@ -55,26 +55,44 @@ export async function renderHomNay(root) {
 }
 
 // ---------- Nhắc việc ----------
+// Thông báo GỌN: chuông + đốm ở đầu trang, bấm mở danh sách; không chiếm màn hình
 function veNhac(root) {
   const box = $('#hnNhac', root);
-  box.innerHTML = (D.nhac_viec || []).map((n) => `
-    <div class="remind" data-id="${n.id}">
-      ${ic('bell')}<p>${esc(n.noi_dung)}</p>
-      <button aria-label="Đã xem">${ic('x')}</button>
-    </div>`).join('');
-  $$('.remind button', box).forEach((b) => b.onclick = async () => {
-    const el = b.closest('.remind');
-    el.remove();
-    try { await rpc('fn_da_xem_nhac', { p_id: Number(el.dataset.id) }); } catch {}
-    if (!$('.remind', box)) document.querySelector('.tab[data-id="homnay"]')?.classList.remove('hasdot');
-  });
+  const ds = D.nhac_viec || [];
+  if (!ds.length) { box.innerHTML = ''; return; }
+  // chỉ một dòng gọn: chuông + thông báo MỚI NHẤT + số lượng
+  const moi = ds[0];
+  box.innerHTML = `
+    <button class="nhac-bar" id="nhacMo">
+      <span class="nhac-bell">${ic('bell')}<i class="nhac-dot"></i></span>
+      <span class="nhac-text">${esc(moi.noi_dung)}</span>
+      ${ds.length > 1 ? `<span class="badge badge-acc" style="font-size:11px">+${ds.length - 1}</span>` : ''}
+    </button>`;
+  $('#nhacMo', box).onclick = () => {
+    const sh = openSheet(`<div class="sheet-grip"></div>
+      <h3>${ic('bell')} Nhắc việc (${ds.length})</h3>
+      ${ds.map((n) => `
+        <div class="remind" data-id="${n.id}">
+          ${ic('bell')}<p>${esc(n.noi_dung)}</p>
+          <button aria-label="Đã xem">${ic('x')}</button>
+        </div>`).join('')}
+      <button class="btn btn-quiet mt" id="nhacXemHet">${ic('check')} Đã xem tất cả</button>`);
+    $$('.remind button', sh).forEach((b) => b.onclick = async () => {
+      const el = b.closest('.remind'); el.remove();
+      try { await rpc('fn_da_xem_nhac', { p_id: Number(el.dataset.id) }); } catch {}
+    });
+    $('#nhacXemHet', sh).onclick = () => busy($('#nhacXemHet', sh), async () => {
+      for (const n of ds) { try { await rpc('fn_da_xem_nhac', { p_id: n.id }); } catch {} }
+      closeSheet(); renderHomNay(root);
+    });
+  };
 }
 
 // ---------- Check-in ----------
 // Map địa điểm (text) → { loại nơi làm việc, địa điểm } để tự chấm công
 function mapNoiLamViec(diaDiem) {
   const d = String(diaDiem || '').toLowerCase();
-  if (/(bảo hiểm|bao hiem)/.test(d)) return { loai: 'CONG_TAC', diaDiem: 'Xưởng bảo hiểm' };
+  if (/(bảo hiểm|bao hiem)/.test(d)) return { loai: 'XUONG_BH', diaDiem: null };
   if (/(hai bà trưng|hai ba trung|hbt)/.test(d)) return { loai: 'CONG_TAC', diaDiem: 'Cửa hàng Hai Bà Trưng' };
   if (/(văn phòng|van phong|nón vải|non vai|xưởng nón|xuong non|kho tổng|kho tong|kho vải|kho vai|dưới kho|duoi kho|xuống kho|xuong kho|\bkho\b|\bvp\b)/.test(d)) return { loai: 'VAN_PHONG', diaDiem: null };
   if (/(ở nhà|o nha|tại nhà|tai nha|làm.*nhà|wfh)/.test(d)) return { loai: 'LAM_O_NHA', diaDiem: null };

@@ -282,16 +282,16 @@ export async function xuLyVoiTroLy(text, mode = 'troly', extra = {}) {
     return `
       <div class="kh-row ${thieu ? 'thieu' : ''}" data-kh="${k.id}">
         <div class="kh-head">
-          <span class="kh-time">${fmtNgayGio(k.thoi_gian)}</span>
-          <span style="flex:1">${esc(k.tieu_de)}</span>
-          ${thieu ? `<span class="kh-flag">${ic('alert')} Chưa có phản hồi</span>` : ''}
+          <span class="kh-time mono">${fmtNgayGio(k.thoi_gian)}</span>
+          ${thieu ? `<span class="kh-flag">${ic('alert')} Chưa phản hồi</span>` : `<span class="kh-flag ok">${ic('check')} Đã có</span>`}
         </div>
+        <div class="kh-ten">${esc(k.tieu_de)}</div>
         <select class="input kh-tt">
           <option value="">— Chọn kết quả —</option>
           ${Object.entries(TEN_TT).map(([v, t]) =>
             `<option value="${v}" ${cn?.trang_thai === v ? 'selected' : ''}>${t}</option>`).join('')}
         </select>
-        <input class="input kh-ph" placeholder="Phản hồi / kết quả cụ thể…" value="${esc(cn?.phan_hoi || '')}">
+        <textarea class="input kh-ph" placeholder="Phản hồi / kết quả cụ thể…" rows="3">${esc(cn?.phan_hoi || '')}</textarea>
       </div>`;
   }).join('');
 
@@ -391,7 +391,7 @@ async function tuCapNhatViTri(cvs) {
   } else if (co(/(nghỉ phép|nghi phep)/)) {
     loai = 'NGHI_PHEP';
   } else if (co(/(bảo hiểm|bao hiem)/)) {
-    loai = 'CONG_TAC'; diaDiem = 'Xưởng bảo hiểm';
+    loai = 'XUONG_BH'; diaDiem = null;
   } else if (co(/(hai bà trưng|hai ba trung|hbt)/)) {
     loai = 'CONG_TAC'; diaDiem = 'Cửa hàng Hai Bà Trưng';
   } else {

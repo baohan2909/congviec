@@ -69,15 +69,14 @@ export async function renderKeHoach(root) {
     const diNgay = seg === 'hom_nay' ? di : [];
 
     box.innerHTML = `
+      ${(listHT.length + diNgay.length) === 0 ? `
       <div class="card">
         <h2 class="card-title">${ic('calendar')} ${fmtNgay(ngay)}${seg === 'hom_nay' ? ' — Hôm nay' : ' — Ngày mai'}</h2>
-        ${listHT.length === 0 && diNgay.length === 0
-          ? `<p class="muted mb0">${seg === 'hom_nay' ? MC.chuaCoKeHoach : 'Ngày mai còn trống. Anh/chị lên kế hoạch trước để em nhắc ạ.'}</p>`
-          : listHT.map((k) => veItem(k)).join('')}
-      </div>
+        <p class="muted mb0">${seg === 'hom_nay' ? MC.chuaCoKeHoach : 'Ngày mai còn trống. Anh/chị lên kế hoạch trước để em nhắc ạ.'}</p>
+      </div>` : ''}
       ${(listHT.length + diNgay.length) > 0 ? `
         <div class="card mb0">
-          <div class="hd-ngay"><h2 class="card-title mb0">${ic('clock')} Lịch trong ngày</h2>
+          <div class="hd-ngay"><h2 class="card-title mb0">${ic('clock')} ${fmtNgay(ngay)}${seg === 'hom_nay' ? ' · Hôm nay' : ' · Ngày mai'}</h2>
             <div class="seg-mini" id="khView">
               <button data-v="timeline" class="on">Timeline</button>
               <button data-v="vanban">Văn bản</button>
@@ -123,15 +122,34 @@ export async function renderKeHoach(root) {
       }
     });
   } else {
+    // TỔNG HỢP THEO TRẠNG THÁI: Hoàn thành / Đang thực hiện / Chưa làm — kiểm soát pending
+    const ttCua = (k) => k.trang_thai === 'DA_THUC_HIEN' ? 'xong' : (k.ket_qua ? 'dang' : 'chua');
+    const demTT = { xong: 0, dang: 0, chua: 0 };
+    ds.filter((k) => k.trang_thai !== 'DA_HUY').forEach((k) => demTT[ttCua(k)]++);
     if (!Object.keys(nhom).length) {
       box.innerHTML = `<div class="card mb0"><p class="muted mb0">${MC.chuaCoKeHoach}</p></div>`;
     } else {
-      box.innerHTML = Object.entries(nhom).map(([d, arr]) => `
-        <div class="card">
+      box.innerHTML = `
+        <div class="tag-count" style="margin-bottom:12px">
+          <span class="tagc on" data-tt="all">Tất cả <b>${demTT.xong + demTT.dang + demTT.chua}</b></span>
+          <span class="tagc" data-tt="xong">${ic('check')} Hoàn thành <b>${demTT.xong}</b></span>
+          <span class="tagc" data-tt="dang">${ic('clock')} Đang làm <b>${demTT.dang}</b></span>
+          <span class="tagc miss" data-tt="chua">${ic('alert')} Chưa làm <b>${demTT.chua}</b></span>
+        </div>` +
+        Object.entries(nhom).map(([d, arr]) => `
+        <div class="card kh-ngay-card">
           <h2 class="card-title">${ic('calendar')} ${fmtNgay(d)}${d === ngayHN ? ' <span class="badge badge-acc">Hôm nay</span>' : ''}</h2>
-          ${arr.map((k) => veItem(k)).join('')}
+          ${arr.map((k) => `<div class="kh-tt-wrap" data-tt="${ttCua(k)}">${veItem(k, ttCua(k))}</div>`).join('')}
         </div>`).join('');
       box.lastElementChild?.classList.add('mb0');
+      // Lọc theo trạng thái
+      $$('.tag-count .tagc', box).forEach((b) => b.onclick = () => {
+        $$('.tag-count .tagc', box).forEach((x) => x.classList.toggle('on', x === b));
+        const f = b.dataset.tt;
+        $$('.kh-tt-wrap', box).forEach((w) => w.classList.toggle('hidden', f !== 'all' && w.dataset.tt !== f));
+        $$('.kh-ngay-card', box).forEach((c) =>
+          c.classList.toggle('hidden', ![...c.querySelectorAll('.kh-tt-wrap')].some((w) => !w.classList.contains('hidden'))));
+      });
     }
   }
 
@@ -145,15 +163,18 @@ export async function renderKeHoach(root) {
 }
 
 // ---------- Item trong list ----------
-function veItem(k) {
+function veItem(k, tt = null) {
+  const badge = tt === 'xong' ? '<span class="badge badge-acc" style="font-size:10.5px">Hoàn thành</span>'
+    : tt === 'dang' ? '<span class="badge badge-gold" style="font-size:10.5px">Đang làm</span>'
+    : tt === 'chua' ? '<span class="badge badge-warn" style="font-size:10.5px">Chưa làm</span>' : '';
   return `
     <div class="list-item" data-open="${k.id}" style="cursor:pointer">
       <span class="badge badge-gold mono">${fmtGio(k.thoi_gian)}</span>
       <div class="list-main">
         <div class="list-title">${esc(k.tieu_de)}</div>
-        <div class="list-sub">${k.dia_diem ? esc(k.dia_diem) + ' · ' : ''}nhắc trước ${k.nhac_truoc_phut}′</div>
+        <div class="list-sub">${k.dia_diem ? esc(k.dia_diem) + ' · ' : ''}${k.ket_qua ? esc(String(k.ket_qua).slice(0, 60)) : 'nhắc trước ' + k.nhac_truoc_phut + '′'}</div>
       </div>
-      ${ic('chevron', 'ic-xs')}
+      ${badge}${ic('chevron', 'ic-xs')}
     </div>`;
 }
 

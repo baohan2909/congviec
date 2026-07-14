@@ -33,21 +33,20 @@ export async function renderBaoCao(root) {
       <div id="bcKhList"></div>
     </div>
 
-    <div class="card">
-      <h2 class="card-title">${ic('file')} Báo cáo hôm nay</h2>
-      <button class="btn btn-primary btn-troly" id="bcTroly">${ic('mic')} Trợ lý — nói để báo cáo</button>
-      <p class="muted" style="font-size:13px;margin:8px 0 0;text-align:center">Bấm rồi nói tự nhiên, em tự chuẩn hóa &amp; gửi giúp anh/chị ạ.</p>
-      <details class="bc-thu-cong mt">
-        <summary class="muted">Hoặc tự gõ / gửi kèm ảnh</summary>
-        <textarea class="input mt" id="bcText"
-          placeholder="Gõ tự do tại đây…"></textarea>
-        <div class="photo-grid" id="bcPhotos"></div>
-        <button class="btn btn-primary btn-troly mt" id="bcAI">${ic('sparkle')} Trợ lý chuẩn hóa &amp; gửi</button>
-        <div class="row mt">
-          <button class="btn btn-quiet" id="bcCam">${ic('camera')} Thêm ảnh</button>
-          <button class="btn btn-quiet" id="bcRaw">${ic('send')} Gửi nguyên văn</button>
-        </div>
-      </details>
+    <div class="row" style="margin-bottom:14px">
+      <button class="btn btn-primary" id="bcTroly">${ic('mic')} Nói báo cáo</button>
+      <button class="btn btn-quiet" id="bcTuNhap">${ic('plus')} Tự nhập</button>
+    </div>
+
+    <div class="card hidden" id="bcThuCong">
+      <h2 class="card-title">${ic('edit')} Tự nhập báo cáo</h2>
+      <textarea class="input" id="bcText" placeholder="Gõ tự do tại đây…" style="min-height:140px"></textarea>
+      <div class="photo-grid" id="bcPhotos"></div>
+      <button class="btn btn-primary btn-troly mt" id="bcAI">${ic('sparkle')} Trợ lý chuẩn hóa &amp; gửi</button>
+      <div class="row mt">
+        <button class="btn btn-quiet" id="bcCam">${ic('camera')} Thêm ảnh</button>
+        <button class="btn btn-quiet" id="bcRaw">${ic('send')} Gửi nguyên văn</button>
+      </div>
       <input type="file" id="bcFile" accept="image/*" multiple hidden>
     </div>
 
@@ -76,6 +75,10 @@ export async function renderBaoCao(root) {
     });
   };
 
+  $('#bcTuNhap', root).onclick = () => {
+    $('#bcThuCong', root).classList.toggle('hidden');
+    if (!$('#bcThuCong', root).classList.contains('hidden')) $('#bcText', root).focus();
+  };
   $('#bcCam', root)?.addEventListener('click', () => $('#bcFile', root).click());
   $('#bcFile', root).onchange = async (e) => {
     for (const f of [...e.target.files].slice(0, 10 - photos.length)) {
