@@ -11,6 +11,7 @@ import { MC } from './00-config.js';
 import { moGhiAm } from './05-troly.js';
 
 let seg = 'hom_nay';
+let tcTu = null, tcDen = null;   // khoảng ngày tra cứu tùy chọn
 
 export async function renderKeHoach(root) {
   root.innerHTML = `
@@ -25,23 +26,38 @@ export async function renderKeHoach(root) {
     <div class="seg">
       <button data-s="hom_nay"  class="${seg === 'hom_nay'  ? 'on' : ''}">Hôm nay</button>
       <button data-s="ngay_mai" class="${seg === 'ngay_mai' ? 'on' : ''}">Ngày mai</button>
-      <button data-s="tuan"     class="${seg === 'tuan'     ? 'on' : ''}">Tuần này</button>
-      <button data-s="tat_ca"   class="${seg === 'tat_ca'   ? 'on' : ''}">30 ngày</button>
+      <button data-s="tuan"     class="${seg === 'tuan'     ? 'on' : ''}">Tuần</button>
+      <button data-s="tra_cuu"  class="${seg === 'tra_cuu'  ? 'on' : ''}">Tra cứu</button>
     </div>
+    ${seg === 'tra_cuu' ? `
+    <div class="tc-row">
+      <input class="input" type="date" id="tcTu" value="${tcTu || new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10)}">
+      <span class="tc-sep">→</span>
+      <input class="input" type="date" id="tcDen" value="${tcDen || new Date().toISOString().slice(0, 10)}">
+      <button class="btn btn-primary btn-sm" id="tcXem">${ic('search')} Xem</button>
+    </div>` : ''}
     <div id="khBody"><div class="skeleton" style="height:140px"></div></div>`;
 
   const reload = () => renderKeHoach(root);
   $('#khMic', root).onclick = () => moGhiAm('troly', { onSaved: reload });
   $('#khAdd', root).onclick = () => formThem(reload);
   $$('.seg button', root).forEach((b) => b.onclick = () => { seg = b.dataset.s; renderKeHoach(root); });
+  $('#tcXem', root) && ($('#tcXem', root).onclick = () => {
+    tcTu = $('#tcTu', root).value; tcDen = $('#tcDen', root).value;
+    if (!tcTu || !tcDen) { toast('Anh/chị chọn đủ 2 ngày ạ.', 'err'); return; }
+    if (tcTu > tcDen) { const t = tcTu; tcTu = tcDen; tcDen = t; }
+    renderKeHoach(root);
+  });
 
   let sDen = 0, sTu = 0;
   if      (seg === 'hom_nay')  { sTu = 0; sDen = 0; }
   else if (seg === 'ngay_mai') { sTu = 1; sDen = 1; }
   else if (seg === 'tuan')     { sTu = 0; sDen = 6; }
-  else                         { sTu = 0; sDen = 29; }
-  const tu  = new Date(Date.now() + sTu  * 864e5).toISOString().slice(0, 10);
-  const den = new Date(Date.now() + sDen * 864e5).toISOString().slice(0, 10);
+  else                         { sTu = -29; sDen = 0; }   // tra cứu mặc định: 30 ngày QUA
+  let tu  = new Date(Date.now() + sTu  * 864e5).toISOString().slice(0, 10);
+  let den = new Date(Date.now() + sDen * 864e5).toISOString().slice(0, 10);
+  if (seg === 'tra_cuu' && tcTu && tcDen) { tu = tcTu; den = tcDen; }
+  else if (seg === 'tra_cuu') { tu = new Date(Date.now() - 6 * 864e5).toISOString().slice(0, 10); }
 
   let ds = [], di = [];
   try {
@@ -135,6 +151,7 @@ export async function renderKeHoach(root) {
           <span class="tagc" data-tt="xong">${ic('check')} Hoàn thành <b>${demTT.xong}</b></span>
           <span class="tagc" data-tt="dang">${ic('clock')} Đang làm <b>${demTT.dang}</b></span>
           <span class="tagc miss" data-tt="chua">${ic('alert')} Chưa làm <b>${demTT.chua}</b></span>
+          <span class="tagc" id="tcCopy">${ic('copy')} Sao chép</span>
         </div>` +
         Object.entries(nhom).map(([d, arr]) => `
         <div class="card kh-ngay-card">
@@ -142,9 +159,26 @@ export async function renderKeHoach(root) {
           ${arr.map((k) => `<div class="kh-tt-wrap" data-tt="${ttCua(k)}">${veItem(k, ttCua(k))}</div>`).join('')}
         </div>`).join('');
       box.lastElementChild?.classList.add('mb0');
+      // Sao chép tổng hợp (theo bộ lọc đang chọn) — dán sang Sheets/Zalo lưu hồ sơ
+      $('#tcCopy', box) && ($('#tcCopy', box).onclick = async (e) => {
+        e.stopPropagation();
+        const f = box.querySelector('.tag-count .tagc.on')?.dataset.tt || 'all';
+        const tenTT = { xong: 'Hoàn thành', dang: 'Đang thực hiện', chua: 'Chưa thực hiện' };
+        const dong = [`TỔNG HỢP CÔNG VIỆC ${tu.split('-').reverse().join('/')} → ${den.split('-').reverse().join('/')}`, ''];
+        Object.entries(nhom).forEach(([d, arr]) => {
+          const loc = arr.filter((k) => f === 'all' || ttCua(k) === f);
+          if (!loc.length) return;
+          dong.push(`■ ${fmtNgay(d)}`);
+          loc.forEach((k) => dong.push(
+            `  - ${fmtGio(k.thoi_gian)} ${k.tieu_de}${k.dia_diem ? ' · ' + k.dia_diem : ''} [${tenTT[ttCua(k)]}]${k.ket_qua ? ' — ' + k.ket_qua : ''}`));
+          dong.push('');
+        });
+        try { await navigator.clipboard.writeText(dong.join('\n')); toast('Em đã sao chép bản tổng hợp ạ.'); }
+        catch { toast('Không sao chép được, anh/chị thử lại ạ.', 'err'); }
+      });
       // Lọc theo trạng thái
-      $$('.tag-count .tagc', box).forEach((b) => b.onclick = () => {
-        $$('.tag-count .tagc', box).forEach((x) => x.classList.toggle('on', x === b));
+      $$('.tag-count .tagc:not(#tcCopy)', box).forEach((b) => b.onclick = () => {
+        $$('.tag-count .tagc:not(#tcCopy)', box).forEach((x) => x.classList.toggle('on', x === b));
         const f = b.dataset.tt;
         $$('.kh-tt-wrap', box).forEach((w) => w.classList.toggle('hidden', f !== 'all' && w.dataset.tt !== f));
         $$('.kh-ngay-card', box).forEach((c) =>

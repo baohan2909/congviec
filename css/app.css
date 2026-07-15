@@ -1000,3 +1000,9 @@ input[type="time"].input, input[type="date"].input, input[type="datetime-local"]
 .kh-row .kh-ten { font-size: 15.5px; font-weight: 700; margin-bottom: 10px; line-height: 1.4; }
 .kh-row .kh-tt { margin-bottom: 8px; }
 .kh-row textarea.kh-ph { min-height: 72px; font-size: 14.5px; line-height: 1.5; }
+
+/* Hàng tra cứu khoảng ngày */
+.tc-row { display: flex; align-items: center; gap: 8px; margin: 12px 0 2px; }
+.tc-row .input { flex: 1; min-width: 0; min-height: 44px; padding: 8px 10px; font-size: 13.5px; }
+.tc-sep { flex: 0 0 auto; color: var(--ink-3); font-weight: 700; }
+.tc-row .btn { flex: 0 0 auto; min-height: 44px; padding: 0 16px; width: auto; }
